@@ -29,6 +29,7 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
     local_model.load_state_dict(global_model.state_dict())
     env = gym.make(env_name)
     local_episode = 0
+    name = mp.current_process().name
 
     while global_episode.value < max_episodes:
         state, _ = env.reset()
@@ -82,7 +83,7 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
         with global_episode.get_lock():
             global_episode.value += 1
 
-        print(f"Worker finished episode {local_episode}, Global Episode: {global_episode.value}, Loss: {loss.item():.4f}")
+        print(f"Worker {name} finished episode {local_episode}, Global Episode: {global_episode.value}, Reward Episode: {R}, Loss: {loss.item():.4f}")
 
 # Main A3C Training Function
 def main():

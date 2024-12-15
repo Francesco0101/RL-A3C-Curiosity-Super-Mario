@@ -1,34 +1,16 @@
 import torch
-from torchvision import transforms as T
-import numpy as np
-from pathlib import Path
-import cv2
-import time, datetime
-import matplotlib.pyplot as plt
-# Gym is an OpenAI toolkit for RL
+import torch.nn as nn
+import torch.optim as optim
+import torch.multiprocessing as mp
 import gym
-from gym.spaces import Box
+import numpy as np
+from torch.distributions import Categorical
 from gym.wrappers import FrameStack, GrayScaleObservation, ResizeObservation
-
-# NES Emulator for OpenAI Gym
+import time, datetime
 from nes_py.wrappers import JoypadSpace
-
-# Super Mario environment for OpenAI Gym
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 
-from tensordict import TensorDict
-from torchrl.data import TensorDictReplayBuffer, LazyMemmapStorage
-
-env = gym_super_mario_bros.make("SuperMarioBros-1-1-v0", render_mode='human', apply_api_compatibility=True)
-
-
-env = JoypadSpace(env, COMPLEX_MOVEMENT)
-print(COMPLEX_MOVEMENT)
-
-env.reset()
-next_state, reward, done, trunc, info = env.step(action=0)
-print(f"{next_state.shape},\n {reward},\n {done},\n {info}")
 
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
@@ -47,126 +29,167 @@ class SkipFrame(gym.Wrapper):
                 break
         return obs, total_reward, done, trunk, info
 
-
-# Apply Wrappers to environment
-env = SkipFrame(env, skip=4)
-env = GrayScaleObservation(env)
-env = ResizeObservation(env, shape=84)
-env = FrameStack(env, num_stack=4)
-
-
-class MetricLogger:
-    def __init__(self, save_dir):
-        self.save_log = save_dir / "log"
-        with open(self.save_log, "w") as f:
-            f.write(
-                f"{'Episode':>8}{'Step':>8}{'MeanReward':>15}"
-                f"{'MeanLength':>15}{'TimeDelta':>15}{'Time':>20}\n"
-            )
-        self.ep_rewards_plot = save_dir / "reward_plot.jpg"
-        self.ep_lengths_plot = save_dir / "length_plot.jpg"
-
-        # History metrics
-        self.ep_rewards = []
-        self.ep_lengths = []
-
-        # Moving averages
-        self.moving_avg_ep_rewards = []
-        self.moving_avg_ep_lengths = []
-
-        # Current episode metrics
-        self.init_episode()
-
-        # Timing
-        self.record_time = time.time()
-
-    def log_step(self, reward):
-        self.curr_ep_reward += reward
-        self.curr_ep_length += 1
-
-    def log_episode(self):
-        "Mark end of episode"
-        self.ep_rewards.append(self.curr_ep_reward)
-        self.ep_lengths.append(self.curr_ep_length)
-
-        self.init_episode()
-
-    def init_episode(self):
-        self.curr_ep_reward = 0.0
-        self.curr_ep_length = 0
-
-    def record(self, episode, step):
-        mean_ep_reward = np.round(np.mean(self.ep_rewards[-100:]), 3)
-        mean_ep_length = np.round(np.mean(self.ep_lengths[-100:]), 3)
-        self.moving_avg_ep_rewards.append(mean_ep_reward)
-        self.moving_avg_ep_lengths.append(mean_ep_length)
-
-        last_record_time = self.record_time
-        self.record_time = time.time()
-        time_since_last_record = np.round(self.record_time - last_record_time, 3)
-
-        print(
-            f"Episode {episode} - "
-            f"Step {step} - "
-            f"Mean Reward {mean_ep_reward} - "
-            f"Mean Length {mean_ep_length} - "
-            f"Time Delta {time_since_last_record} - "
-            f"Time {datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}"
+# Define the Actor-Critic Model
+class ActorCritic(nn.Module):
+    def __init__(self, input_dim, action_dim):
+        super(ActorCritic, self).__init__()
+        self.common = nn.Sequential(
+            nn.Conv2d(input_dim, 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(12800, 128),
+            nn.ReLU()
         )
+        self.actor = nn.Linear(128, action_dim)
+        self.critic = nn.Linear(128, 1)
 
-        with open(self.save_log, "a") as f:
-            f.write(
-                f"{episode:8d}{step:8d}"
-                f"{mean_ep_reward:15.3f}{mean_ep_length:15.3f}"
-                f"{time_since_last_record:15.3f}"
-                f"{datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'):>20}\n"
-            )
+    def forward(self, x):
+        print("x: ", x.shape)
+        x = x.squeeze(-1)
+        print("x: ", x.shape)
+        x = self.common(x)
+        print("x: ", x.shape)
+        action_probs = self.actor(x)
+        value = self.critic(x)
+        return action_probs, value
 
-        # Save plots
-        for metric in ["ep_lengths", "ep_rewards"]:
-            plt.clf()
-            plt.plot(getattr(self, f"moving_avg_{metric}"), label=f"moving_avg_{metric}")
-            plt.legend()
-            plt.savefig(getattr(self, f"{metric}_plot"))
+# Worker Process
+def worker(global_model, optimizer, env_name, global_episode, max_episodes):
+    local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0])
+    local_model.load_state_dict(global_model.state_dict())
+    env = gym_super_mario_bros.make(env_name , render_mode='human', apply_api_compatibility=True)
+    env = JoypadSpace(env, COMPLEX_MOVEMENT)
+    env = SkipFrame(env, skip=4)
+    env = GrayScaleObservation(env)
+    env = ResizeObservation(env, shape=84)
+    env = FrameStack(env, num_stack=4)
+    local_episode = 0
+    name = mp.current_process().name
+    print(f"Worker {name} started")
+    while global_episode.value < max_episodes:
+        print(f"Worker {name} started episode {local_episode}")
+        state, _ = env.reset()
+        done = False
+        log_probs = []
+        values = []
+        rewards = []
+        local_episode += 1
 
-use_cuda = torch.cuda.is_available()
-print(f"Using CUDA: {use_cuda}")
-print()
+        # Rollout loop
+        while not done:
+            print(f"Worker {name} episode {local_episode} step")
+            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+            action_probs, value = local_model(state)
+            action_probs = torch.softmax(action_probs, dim=-1)
+            dist = Categorical(action_probs)
+            action = dist.sample()
 
-save_dir = Path("checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-save_dir.mkdir(parents=True)
+            next_state, reward, done, _ , _= env.step(action.item())
+            log_probs.append(dist.log_prob(action))
+            values.append(value)
+            rewards.append(reward)
 
-logger = MetricLogger(save_dir)
+            state = next_state
 
-# Number of episodes to run
-episodes = 1
+        # Compute returns and advantages
+        returns = []
+        R = 0 if done else local_model(torch.tensor(next_state, dtype=torch.float32).unsqueeze(0))[1].item()
+        for reward in reversed(rewards):
+            R = reward + 0.99 * R
+            returns.insert(0, R)
+        returns = torch.tensor(returns, dtype=torch.float32)
+        values = torch.cat(values).squeeze(-1)
 
-for e in range(episodes):
-    state = env.reset()
-    episode_reward = 0
+        # Loss calculation
+        log_probs = torch.cat(log_probs)
+        advantage = returns - values.detach()  # Detach values to avoid backprop through critic
+        actor_loss = -(log_probs * advantage).mean()
+        critic_loss = nn.MSELoss()(values, returns)  # Both now have shape [30]
+        loss = actor_loss + critic_loss
 
-    while True:
-        # Select a random action
-        action = env.action_space.sample()
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        for global_param, local_param in zip(global_model.parameters(), local_model.parameters()):
+            global_param._grad = local_param.grad
+        optimizer.step()
 
-        # Perform the action in the environment
-        next_state, reward, done, trunc, info = env.step(action)
+        local_model.load_state_dict(global_model.state_dict())
 
-        # Log metrics
-        logger.log_step(reward)
+        # Update global episode counter
+        with global_episode.get_lock():
+            global_episode.value += 1
 
-        # Update total reward
-        episode_reward += reward
+        print(f"Worker {name} finished episode {local_episode}, Global Episode: {global_episode.value}, Reward Episode: {R}, Loss: {loss.item():.4f}")
 
-        # Check if end of game
-        if done or info.get("flag_get"):
-            break
+# Main A3C Training Function
+def main():
+    eval = False
+    if(eval == False):
+        env_name = "SuperMarioBros-1-1-v0"
+        env = gym_super_mario_bros.make(env_name , render_mode='human', apply_api_compatibility=True)
+        env = JoypadSpace(env, COMPLEX_MOVEMENT)
+        env = SkipFrame(env, skip=4)
+        env = GrayScaleObservation(env)
+        env = ResizeObservation(env, shape=84)
+        env = FrameStack(env, num_stack=4)
+        input_dim = env.observation_space.shape[0]
+        print("input_dim: ", input_dim)
+        action_dim = env.action_space.n
 
-    # Log episode details
-    logger.log_episode()
+        # Create global model and optimizer
+        global_model = ActorCritic(input_dim, action_dim)
+        global_model.share_memory()
+        optimizer = optim.Adam(global_model.parameters(), lr=1e-4)
 
-    # Record metrics
-    if (e % 10 == 0) or (e == episodes - 1):
-        logger.record(episode=e, step=logger.curr_ep_length)
+        # Multiprocessing variables
+        max_episodes = 3000
+        print("cpu: ", mp.cpu_count())
+        num_workers = 3
+        global_episode = mp.Value('i', 0)
 
-env.close()
+        # Start workers
+        workers = []
+        for _ in range(num_workers):
+            worker_process = mp.Process(target=worker, args=(global_model, optimizer, env_name, global_episode, max_episodes))
+            workers.append(worker_process)
+            worker_process.start()
+        
+        print("Training started...")
+        for worker_process in workers:
+            worker_process.join()
+
+        print("Training complete!")
+
+    print("Testing policy...")
+    #do test on 10 episodes rendering the env and printing the total reward
+    env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0', render_mode='human', apply_api_compatibility=True)
+    env = JoypadSpace(env, COMPLEX_MOVEMENT)
+    env = SkipFrame(env, skip=4)
+    env = GrayScaleObservation(env)
+    env = ResizeObservation(env, shape=84)
+    env = FrameStack(env, num_stack=4)
+    state, _  = env.reset()
+    env.render()
+    done = False
+    reward = 0
+    total_reward = 0
+    for _ in range(10):
+        while not done:
+            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+            action_probs, _ = global_model(state)
+            action = torch.argmax(action_probs, dim=-1)
+            next_state, reward, done, _ , _= env.step(action.item())
+            total_reward += reward
+            state = next_state
+        print(f"Total reward: {reward}")
+        total_reward += reward
+    total_reward /= 10
+    print(f"Average total reward: {total_reward}")
+
+
+    
+
+
+if __name__ == "__main__":
+    main()
