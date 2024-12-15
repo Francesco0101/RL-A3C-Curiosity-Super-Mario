@@ -103,7 +103,7 @@ def main():
         # Multiprocessing variables
         max_episodes = 3000
         print("cpu: ", mp.cpu_count())
-        num_workers = 3
+        num_workers = 5
         global_episode = mp.Value('i', 0)
 
         # Start workers
@@ -124,7 +124,7 @@ def main():
     state, _  = env.reset()
     env.render()
     done = False
-    reward = 0
+    reward_ep = 0
     total_reward = 0
     for _ in range(10):
         while not done:
@@ -132,10 +132,10 @@ def main():
             action_probs, _ = global_model(state)
             action = torch.argmax(action_probs, dim=-1)
             next_state, reward, done, _ , _= env.step(action.item())
-            total_reward += reward
+            reward_ep += reward
             state = next_state
-        print(f"Total reward: {reward}")
-        total_reward += reward
+        print(f"Episode reward: {reward_ep}")
+        total_reward += reward_ep
     total_reward /= 10
     print(f"Average total reward: {total_reward}")
 

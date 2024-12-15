@@ -9,7 +9,7 @@ from gym.wrappers import FrameStack, GrayScaleObservation, ResizeObservation
 import time, datetime
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
-from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
+from gym_super_mario_bros.actions import RIGHT_ONLY
 
                 
 class SkipFrame(gym.Wrapper):
@@ -57,7 +57,7 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
     local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0])
     local_model.load_state_dict(global_model.state_dict())
     env = gym_super_mario_bros.make(env_name , render_mode='human', apply_api_compatibility=True)
-    env = JoypadSpace(env, COMPLEX_MOVEMENT)
+    env = JoypadSpace(env, RIGHT_ONLY)
     env = SkipFrame(env, skip=4)
     env = GrayScaleObservation(env)
     env = ResizeObservation(env, shape=84)
@@ -126,7 +126,7 @@ def main():
 
         env_name = "SuperMarioBros-1-1-v0"
         env = gym_super_mario_bros.make(env_name , render_mode='human', apply_api_compatibility=True)
-        env = JoypadSpace(env, COMPLEX_MOVEMENT)
+        env = JoypadSpace(env, RIGHT_ONLY)
         env = SkipFrame(env, skip=4)
         env = GrayScaleObservation(env)
         env = ResizeObservation(env, shape=84)
@@ -143,7 +143,7 @@ def main():
         print(global_model)
 
         # Multiprocessing variables
-        max_episodes = 3000
+        max_episodes = 30
         print("cpu: ", mp.cpu_count())
         num_workers = 3
         global_episode = mp.Value('i', 0)
@@ -164,7 +164,7 @@ def main():
     print("Testing policy...")
     #do test on 10 episodes rendering the env and printing the total reward
     env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0', render_mode='human', apply_api_compatibility=True)
-    env = JoypadSpace(env, COMPLEX_MOVEMENT)
+    env = JoypadSpace(env, RIGHT_ONLY)
     env = SkipFrame(env, skip=4)
     env = GrayScaleObservation(env)
     env = ResizeObservation(env, shape=84)
@@ -172,7 +172,7 @@ def main():
     state, _  = env.reset()
     env.render()
     done = False
-    reward = 0
+    reward_ep = 0
     total_reward = 0
     for _ in range(10):
         while not done:
@@ -180,10 +180,10 @@ def main():
             action_probs, _ = global_model(state)
             action = torch.argmax(action_probs, dim=-1)
             next_state, reward, done, _ , _= env.step(action.item())
-            total_reward += reward
+            reward_ep += reward
             state = next_state
-        print(f"Total reward: {reward}")
-        total_reward += reward
+        print(f"Episode reward: {reward_ep}")
+        total_reward += reward_ep
     total_reward /= 10
     print(f"Average total reward: {total_reward}")
 
