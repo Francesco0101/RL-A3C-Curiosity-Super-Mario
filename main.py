@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.multiprocessing as mp
+import torch.multiprocessing as _mp
 import gym
 import numpy as np
 from torch.distributions import Categorical
@@ -11,7 +11,7 @@ from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 
-
+                
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
         """Return only every `skip`-th frame"""
@@ -44,17 +44,16 @@ class ActorCritic(nn.Module):
         self.critic = nn.Linear(128, 1)
 
     def forward(self, x):
-        print("x: ", x.shape)
         x = x.squeeze(-1)
-        print("x: ", x.shape)
         x = self.common(x)
-        print("x: ", x.shape)
         action_probs = self.actor(x)
         value = self.critic(x)
         return action_probs, value
 
 # Worker Process
 def worker(global_model, optimizer, env_name, global_episode, max_episodes):
+    name = _mp.current_process().name
+    print(f"Worker {name} started")
     local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0])
     local_model.load_state_dict(global_model.state_dict())
     env = gym_super_mario_bros.make(env_name , render_mode='human', apply_api_compatibility=True)
@@ -64,8 +63,6 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
     env = ResizeObservation(env, shape=84)
     env = FrameStack(env, num_stack=4)
     local_episode = 0
-    name = mp.current_process().name
-    print(f"Worker {name} started")
     while global_episode.value < max_episodes:
         print(f"Worker {name} started episode {local_episode}")
         state, _ = env.reset()
@@ -77,8 +74,7 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
 
         # Rollout loop
         while not done:
-            print(f"Worker {name} episode {local_episode} step")
-            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+            state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0)
             action_probs, value = local_model(state)
             action_probs = torch.softmax(action_probs, dim=-1)
             dist = Categorical(action_probs)
@@ -126,6 +122,8 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
 def main():
     eval = False
     if(eval == False):
+        mp = _mp.get_context('spawn') # Create a new context for multiprocessing --> without, deadlock
+
         env_name = "SuperMarioBros-1-1-v0"
         env = gym_super_mario_bros.make(env_name , render_mode='human', apply_api_compatibility=True)
         env = JoypadSpace(env, COMPLEX_MOVEMENT)
@@ -140,7 +138,9 @@ def main():
         # Create global model and optimizer
         global_model = ActorCritic(input_dim, action_dim)
         global_model.share_memory()
-        optimizer = optim.Adam(global_model.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(global_model.parameters(), lr=1e-4)
+        print("Global model created")
+        print(global_model)
 
         # Multiprocessing variables
         max_episodes = 3000
