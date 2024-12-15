@@ -11,7 +11,8 @@ from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import RIGHT_ONLY
 
-                
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
         """Return only every `skip`-th frame"""
@@ -54,7 +55,7 @@ class ActorCritic(nn.Module):
 def worker(global_model, optimizer, env_name, global_episode, max_episodes):
     name = _mp.current_process().name
     print(f"Worker {name} started")
-    local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0])
+    local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0]).to(device)
     local_model.load_state_dict(global_model.state_dict())
     env = gym_super_mario_bros.make(env_name , render_mode='human', apply_api_compatibility=True)
     env = JoypadSpace(env, RIGHT_ONLY)
@@ -74,7 +75,7 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
 
         # Rollout loop
         while not done:
-            state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0)
+            state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0).to(device)
             action_probs, value = local_model(state)
             action_probs = torch.softmax(action_probs, dim=-1)
             dist = Categorical(action_probs)
@@ -93,8 +94,8 @@ def worker(global_model, optimizer, env_name, global_episode, max_episodes):
         for reward in reversed(rewards):
             R = reward + 0.99 * R
             returns.insert(0, R)
-        returns = torch.tensor(returns, dtype=torch.float32)
-        values = torch.cat(values).squeeze(-1)
+        returns = torch.tensor(returns, dtype=torch.float32).to(device)
+        values = torch.cat(values).squeeze(-1).to(device)
 
         # Loss calculation
         log_probs = torch.cat(log_probs)
@@ -136,14 +137,14 @@ def main():
         action_dim = env.action_space.n
 
         # Create global model and optimizer
-        global_model = ActorCritic(input_dim, action_dim)
+        global_model = ActorCritic(input_dim, action_dim).to(device)
         global_model.share_memory()
         optimizer = torch.optim.Adam(global_model.parameters(), lr=1e-4)
         print("Global model created")
         print(global_model)
 
         # Multiprocessing variables
-        max_episodes = 30
+        max_episodes = 100
         print("cpu: ", mp.cpu_count())
         num_workers = 3
         global_episode = mp.Value('i', 0)
