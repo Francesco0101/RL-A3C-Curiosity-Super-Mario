@@ -7,3 +7,4 @@ torchrl==0.3.0
 torchvision
 Pillow
 matplotlib
+opencv-python
