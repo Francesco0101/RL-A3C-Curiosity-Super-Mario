@@ -24,7 +24,6 @@ class ActorCritic(nn.Module):
         for module in self.modules():
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
                 nn.init.xavier_uniform_(module.weight)
-                # nn.init.kaiming_uniform_(module.weight)
                 nn.init.constant_(module.bias, 0)
             elif isinstance(module, nn.LSTMCell):
                 nn.init.constant_(module.bias_ih, 0)

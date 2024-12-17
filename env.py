@@ -65,12 +65,6 @@
     
 #     return env , env.observation_space.shape[0], env.action_space.n
 
-
-
-"""
-@author: Viet Nguyen <nhviet1009@gmail.com>
-"""
-
 import gym_super_mario_bros
 from gym.spaces import Box
 from gym import Wrapper
@@ -78,7 +72,6 @@ from nes_py.wrappers import JoypadSpace
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
 import cv2
 import numpy as np
-import subprocess as sp
 
 
 
@@ -92,7 +85,7 @@ def process_frame(frame):
 
 
 class CustomReward(Wrapper):
-    def __init__(self, env=None, monitor=None):
+    def __init__(self, env=None):
         super(CustomReward, self).__init__(env)
         self.observation_space = Box(low=0, high=255, shape=(1, 84, 84))
         self.curr_score = 0
@@ -108,7 +101,7 @@ class CustomReward(Wrapper):
                 reward += 50
             else:
                 reward -= 50
-        return state, reward / 10., done, info
+        return state, reward / 10., done, info  
 
     def reset(self):
         self.curr_score = 0
@@ -142,8 +135,11 @@ class CustomSkipFrame(Wrapper):
         return states.astype(np.float32)
 
 
-def create_train_env(world, stage, action_type):
-    env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage), apply_api_compatibility=True)
+def create_train_env(world='1', stage='1', action_type="complex", render = False):
+    if render:
+        env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage),render_mode = 'human', apply_api_compatibility=True)
+    else:
+        env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage),render_mode = "rgb_array" , apply_api_compatibility=True)
 
     if action_type == "right":
         actions = RIGHT_ONLY
