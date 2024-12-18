@@ -19,7 +19,7 @@ class ActorCritic(nn.Module):
         self.critic = nn.Linear(512, 1)
         self.lstm = nn.LSTMCell(32*6*6, 512)
         self._initialize_weights()
-
+ 
     def _initialize_weights(self):
         for module in self.modules():
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
@@ -31,7 +31,6 @@ class ActorCritic(nn.Module):
 
 
     def forward(self, x, hx, cx):
-        x = x.squeeze(0)
         x = self.common(x)
         x = x.view(x.size(0), -1)
         hx , cx = self.lstm(x, (hx, cx))

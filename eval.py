@@ -13,7 +13,7 @@ def eval():
     model.load_state_dict(torch.load("checkpoints/a3c_1_1_episode_20.pt"))
     model.eval()
     
-    state = env.reset()
+    state, _ = env.reset()
     state  =  torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0)
     done = True
 
@@ -27,7 +27,7 @@ def eval():
         policy = torch.softmax(logits, dim=1)
         action = torch.argmax(policy).item()
         action = int(action)
-        state, reward, done, info = env.step(action)
+        state, reward, done, _, info = env.step(action)
         state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0)
         env.render()
         if info["flag_get"]:

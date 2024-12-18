@@ -5,13 +5,12 @@ from torch.distributions import Categorical
 from env import create_train_env
 from constants import *
 from model import ActorCritic
-from logger import MetricLogger
+from utils import save
 
 device = 'cpu'
 # Worker Process
-def worker(global_model, optimizer, global_episode, max_episodes):
+def worker(global_model, optimizer, global_episode, max_episodes, logger):
     name = _mp.current_process().name
-    logger = MetricLogger(LOG_PATH) 
     # print(f"Worker {name} started")
     local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0]).to(device)
     local_model.load_state_dict(global_model.state_dict())
@@ -22,7 +21,7 @@ def worker(global_model, optimizer, global_episode, max_episodes):
     while global_episode.value < max_episodes:
 
         local_steps = 0
-        state = env.reset()
+        state, _= env.reset()
         log_probs = []
         values = []
         rewards = []
@@ -38,6 +37,7 @@ def worker(global_model, optimizer, global_episode, max_episodes):
             if local_steps == NUM_LOCAL_STEPS:
                 break
             local_steps += 1
+            images = state
             state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0).to(device)
             logits, value, h_0 , c_0 = local_model(state, h_0, c_0) 
             # print("Critic value (before storing):", value)
@@ -46,8 +46,8 @@ def worker(global_model, optimizer, global_episode, max_episodes):
             entropy = -(action_probs * log_action_probs).sum(1, keepdim=True)
             m = Categorical(action_probs)
             action = m.sample().item()
-
-            next_state, reward, done, _= env.step(action)
+            next_state, reward, done, _, _= env.step(action)
+            
             log_probs.append(log_action_probs[0, action])
             values.append(value)
             rewards.append(reward)
@@ -94,9 +94,7 @@ def worker(global_model, optimizer, global_episode, max_episodes):
             global_episode.value += 1
 
         if global_episode.value % SAVE_EPISODE_INTERVAL == 0 and global_episode.value > 0:
-            torch.save(global_model.state_dict(),
-                        "{}/a3c_{}_{}_episode_{}.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value ))
-            
-        logger.log_episode(global_episode.value, total_reward, actor_loss.item(), critic_loss.item(), entropy_loss.item())
-    
-    logger.plot_metrics()
+                torch.save(global_model.state_dict(),
+                            "{}/a3c_{}_{}_episode_{}.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value ))
+                
+        logger.log_episode(global_episode.value, total_reward, actor_loss.item(), critic_loss.item(), entropy_loss.item(), total_loss.item())
