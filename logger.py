@@ -18,7 +18,7 @@ class MetricLogger:
             with open(self.save_log, "w") as f:
                 f.write(
                     f"{'Episode':>8}{'Actor Loss':>15}{'Critic Loss':>15}"
-                    f"{'Entropy Loss':>15}{'Total Reward':>15}{'Time Delta':>15}"
+                    f"{'Entropy Loss':>15}{'Total Reward':>15}{'Total Loss':>15}{'Time Delta':>15}"
                     f"{'Time':>20}\n"
                 )
         self.actor_losses_plot = save_dir+ "/actor_loss_plot.jpg"
