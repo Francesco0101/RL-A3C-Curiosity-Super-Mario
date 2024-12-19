@@ -11,7 +11,7 @@ def eval():
 
     model = ActorCritic(num_states, num_actions)
 
-    model.load_state_dict(torch.load("checkpoints/a3c_1_1_episode_1800.pt"))
+    model.load_state_dict(torch.load("checkpoints/a3c_1_1_episode_2000.pt"))
     model.eval()
     
     state, _ = env.reset()
@@ -25,12 +25,12 @@ def eval():
             env.reset()
 
         logits, value, h_0, c_0 = model(state, h_0, c_0)
-        # policy = torch.softmax(logits, dim=1)
-        # action = torch.argmax(policy).item()
-        # action = int(action)
-        action_probs = torch.softmax(logits, dim=-1)
-        m = Categorical(action_probs)
-        action = m.sample().item()
+        policy = torch.softmax(logits, dim=1)
+        action = torch.argmax(policy).item()
+        action = int(action)
+        # action_probs = torch.softmax(logits, dim=-1)
+        # m = Categorical(action_probs)
+        # action = m.sample().item()
         state, reward, done, _, info = env.step(action)
         state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0)
         env.render()

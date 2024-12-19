@@ -14,28 +14,28 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
     # print(f"Worker {name} started")
     local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0]).to(device)
     local_model.load_state_dict(global_model.state_dict())
-    # local_model.train()
-    env, _, _ = create_train_env(render=False)
+    local_model.train()
+    env, _, _ = create_train_env(render=True)
+    state, _ = env.reset()
     local_episode = 0
-   
-    while global_episode.value < max_episodes:
-
-        local_steps = 0
-        state, _= env.reset()
+    local_steps = 0
+    done = True
+    while local_episode < max_episodes:
         log_probs = []
         values = []
         rewards = []
         entropies = []
         local_episode += 1
         #initialize hidden states
-        h_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
-        c_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
-        done = False
+        if done:
+            h_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
+            c_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
+        else:
+            h_0 = h_0.detach()
+            c_0 = c_0.detach()
         local_model.load_state_dict(global_model.state_dict())
         # Rollout loop
-        while not done:
-            if local_steps == NUM_LOCAL_STEPS:
-                break
+        for _ in range(NUM_LOCAL_STEPS):
             local_steps += 1
             images = state
             state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0).to(device)
@@ -54,6 +54,14 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
             entropies.append(entropy)
 
             state = next_state
+            if local_steps > NUM_GLOBAL_STEPS:
+                done = True
+        
+            if done:
+                local_steps = 0
+                state, _ = env.reset()
+                break
+                
 
         # Compute returns and advantages
         
@@ -84,7 +92,8 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
         total_loss.backward()
 
         for global_param, local_param in zip(global_model.parameters(), local_model.parameters()):
-
+            if global_param.grad is not None:
+                break
             global_param._grad = local_param.grad
 
         optimizer.step()
