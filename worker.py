@@ -26,6 +26,8 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
         rewards = []
         entropies = []
         local_episode += 1
+
+
         #initialize hidden states
         if done:
             h_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
@@ -67,6 +69,7 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
         
         R = torch.zeros(1, 1).to(device)
         if not done:
+            print("entro in R")
             _, R, _, _ = local_model(torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0).to(device), h_0, c_0)
         gae = torch.zeros(1, 1).to(device)
         actor_loss = 0
@@ -79,7 +82,7 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
         for value, reward, log_prob, entropy in list(zip(values, rewards, log_probs, entropies))[::-1]:
             # print("value: ", value)
             # print("reward: ", reward)
-            gae = gae * GAMMA * TAU + reward + GAMMA * next_value - value
+            gae = gae * GAMMA * TAU + reward + GAMMA * next_value.detach() - value.detach()
             next_value = value
             actor_loss += +log_prob * gae
             R = GAMMA * R + reward

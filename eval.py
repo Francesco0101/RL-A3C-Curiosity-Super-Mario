@@ -25,9 +25,13 @@ def eval():
             env.reset()
 
         logits, value, h_0, c_0 = model(state, h_0, c_0)
+        print("LOGITS: ", logits)
         policy = torch.softmax(logits, dim=1)
+        print("POLICY: ", policy)
         action = torch.argmax(policy).item()
+        print("ACTION prima di int: ", action)
         action = int(action)
+        print("ACTION dopo int: ", action)
         # action_probs = torch.softmax(logits, dim=-1)
         # m = Categorical(action_probs)
         # action = m.sample().item()

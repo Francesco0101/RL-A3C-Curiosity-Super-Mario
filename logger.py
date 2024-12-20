@@ -26,21 +26,20 @@ class MetricLogger:
         self.entropy_losses_plot = save_dir+ "/entropy_loss_plot.jpg"
         self.rewards_plot = save_dir+ "/reward_plot.jpg"
         self.total_losses_plot = save_dir+ "/total_loss_plot.jpg"
-
+        
         # History metrics
         self.ep_rewards = []
         self.ep_actor_losses = []
         self.ep_critic_losses = []
         self.ep_entropy_losses = []
         self.ep_total_losses = []
-
+        
         # Moving averages
         self.moving_avg_rewards = []
         self.moving_avg_actor_losses = []
         self.moving_avg_critic_losses = []
         self.moving_avg_entropy_losses = []
         self.moving_avg_total_losses = []
-
 
         # Timing
         self.record_time = time.time()
@@ -53,18 +52,20 @@ class MetricLogger:
         self.ep_entropy_losses.append(entropy_loss)
         self.ep_total_losses.append(total_loss)
 
+       
         # Moving averages over last 100 episodes
         mean_reward = np.round(np.mean(self.ep_rewards[-100:]), 3)
         mean_actor_loss = np.round(np.mean(self.ep_actor_losses[-100:]), 3)
         mean_critic_loss = np.round(np.mean(self.ep_critic_losses[-100:]), 3)
         mean_entropy_loss = np.round(np.mean(self.ep_entropy_losses[-100:]), 3)
         mean_total_loss = np.round(np.mean(self.ep_total_losses[-100:]), 3)
-
+      
         self.moving_avg_rewards.append(mean_reward)
         self.moving_avg_actor_losses.append(mean_actor_loss)
         self.moving_avg_critic_losses.append(mean_critic_loss)
         self.moving_avg_entropy_losses.append(mean_entropy_loss)
         self.moving_avg_total_losses.append(mean_total_loss)
+       
 
         # Timing
         last_record_time = self.record_time
@@ -73,9 +74,9 @@ class MetricLogger:
 
         if( global_episode % 10 == 0):
             print(
-                f"Global Episode {global_episode} - "
+                f"Global Episode {global_episode} - " 
                 f"Actor Loss {actor_loss:.4f} - Critic Loss {critic_loss:.4f} - "
-                f"Entropy Loss {entropy_loss:.4f} - Total Reward {total_reward:.2f} - "
+                f"Entropy Loss {entropy_loss:.4f} - Total Reward {total_reward:.2f} - " 
                 f"Total Loss {total_loss:.4f} - "
                 f"Time Delta {time_since_last_record:.3f} - "
                 f"Time {datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}"
@@ -91,7 +92,7 @@ class MetricLogger:
     def plot_metrics(self):
         """Save the plots for all metrics."""
         for metric, name in zip(
-            ["rewards", "actor_losses", "critic_losses", "entropy_losses", "total_losses"],
+            ["rewards","actor_losses", "critic_losses", "entropy_losses", "total_losses"],
             ["rewards_plot", "actor_losses_plot", "critic_losses_plot", "entropy_losses_plot", "total_losses_plot"],
         ):
             plt.clf()
