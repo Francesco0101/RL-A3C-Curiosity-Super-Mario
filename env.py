@@ -1,15 +1,12 @@
 import gym
 from gym.wrappers import FrameStack, GrayScaleObservation, ResizeObservation
-# from nes_py.wrappers import JoypadSpace
-# import gym_super_mario_bros
-# import numpy as np
+import gym_super_mario_bros
+from gym.spaces import Box
+from gym import Wrapper
+from nes_py.wrappers import JoypadSpace
+from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
 
-# def process_frame(frame):
-#     if frame is not None:
-#         frame = frame/ 255.
-#         return frame
-#     else:
-#         return np.zeros((1, 84, 84))
+
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
         """Return only every `skip`-th frame"""
@@ -26,54 +23,6 @@ class SkipFrame(gym.Wrapper):
             if done:
                 break
         return obs, total_reward, done, trunk, info
-
-# class CustomReward(gym.Wrapper):
-#     def __init__(self, env=None):
-#         super(CustomReward, self).__init__(env)
-#         self.curr_score = 0
-    
-
-#     def step(self, action):
-        
-#         state, reward, done, trunk  ,info = self.env.step(action)
-#         state = process_frame(state)
-#         reward += (info["score"] - self.curr_score) / 40.
-#         self.curr_score = info["score"]
-#         if done:
-#             if info["flag_get"]:
-#                 reward += 50
-#             else:
-#                 reward -= 50
-#         return state, reward / 10., done, trunk,  info
-
-#     def reset(self):
-#         self.curr_score = 0
-#         state , info = self.env.reset()
-#         return process_frame(state) , info
-
-    
-
-# def create_train_env(world, stage, action_type, output_path = None):
-#     env = gym_super_mario_bros.make(f"SuperMarioBros-{world}-{stage}-v0", render_mode='rgb_array', apply_api_compatibility=True)
-#     env = JoypadSpace(env, action_type)
-#     env = GrayScaleObservation(env)
-#     env = ResizeObservation(env, shape=84)
-#     env = CustomReward(env)
-#     env = SkipFrame(env, skip=4)
-#     env = FrameStack(env, num_stack=4)
-    
-#     return env , env.observation_space.shape[0], env.action_space.n
-
-import gym_super_mario_bros
-from gym.spaces import Box
-from gym import Wrapper
-from nes_py.wrappers import JoypadSpace
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
-import cv2
-import numpy as np
-
-
-
 
 class CustomReward(Wrapper):
     def __init__(self, env=None):
