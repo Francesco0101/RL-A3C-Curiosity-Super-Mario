@@ -7,7 +7,8 @@ from constants import *
 from model import ActorCritic
 from utils import save
 
-device = 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = 'cpu'
 # Worker Process
 def worker(global_model, optimizer, global_episode, max_episodes, logger):
     name = _mp.current_process().name
@@ -15,9 +16,9 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
     local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0]).to(device)
     local_model.load_state_dict(global_model.state_dict())
     local_model.train()
-    env, _, _ = create_train_env(render=True)
+    env, _, _ = create_train_env(render = False)
     state, _ = env.reset()
-    local_episode = 0
+    local_episode = global_episode.value
     local_steps = 0
     done = True
     while local_episode < max_episodes:
@@ -69,7 +70,6 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
         
         R = torch.zeros(1, 1).to(device)
         if not done:
-            print("entro in R")
             _, R, _, _ = local_model(torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0).to(device), h_0, c_0)
         gae = torch.zeros(1, 1).to(device)
         actor_loss = 0
