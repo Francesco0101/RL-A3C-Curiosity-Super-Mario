@@ -1,6 +1,6 @@
 WORLD = 1
 STAGE = 1
-ACTION_TYPE  = "complex"
+ACTION_TYPE  = "simple"
 LR = 1e-4
 GAMMA = 0.9
 TAU = 1.0

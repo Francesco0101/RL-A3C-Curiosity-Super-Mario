@@ -54,9 +54,9 @@ class CustomReward(Wrapper):
 
 def create_train_env(world='1', stage='1', action_type="complex", render = False):
     if render:
-        env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage),render_mode = 'human', apply_api_compatibility=True)
+        env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v1".format(world, stage),render_mode = 'human', apply_api_compatibility=True)
     else:
-        env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage),render_mode = "rgb_array" , apply_api_compatibility=True)
+        env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v1".format(world, stage),render_mode = "rgb_array" , apply_api_compatibility=True)
 
     if action_type == "right":
         actions = RIGHT_ONLY

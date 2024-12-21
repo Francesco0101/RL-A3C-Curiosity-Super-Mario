@@ -25,7 +25,7 @@ def train(init_ep = 0):
     mp = _mp.get_context('spawn') # Create a new context for multiprocessing --> without, deadlock
 
     # Create environment
-    _, input_dim, action_dim = create_train_env()
+    _, input_dim, action_dim = create_train_env(action_type = ACTION_TYPE)
     print("action_dim: ", action_dim)
     print("input_dim: ", input_dim)
     save_path = Path(SAVE_PATH)
@@ -63,5 +63,5 @@ def train(init_ep = 0):
     logger.plot_metrics()
 
 if __name__ == "__main__":
-    init_ep = 0 #cambiare a mano per continuare il training
+    init_ep = 20500 #cambiare a mano per continuare il training
     train(init_ep)

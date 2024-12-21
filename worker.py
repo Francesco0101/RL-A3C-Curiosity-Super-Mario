@@ -16,9 +16,9 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger):
     local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0]).to(device)
     local_model.load_state_dict(global_model.state_dict())
     local_model.train()
-    env, _, _ = create_train_env(render = False)
+    env, _, _ = create_train_env(action_type= ACTION_TYPE, render = True)
     state, _ = env.reset()
-    local_episode = global_episode.value
+    local_episode = int(global_episode.value / NUM_WORKERS)
     local_steps = 0
     done = True
     while local_episode < max_episodes:
