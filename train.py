@@ -1,8 +1,8 @@
 import torch
 import torch.multiprocessing as _mp
-from env import create_train_env
+from env_entropy import create_train_env
 from model import ActorCritic
-from worker import worker
+from worker_entropy import worker
 from shared_optim import GlobalAdam
 from constants import *
 import warnings
