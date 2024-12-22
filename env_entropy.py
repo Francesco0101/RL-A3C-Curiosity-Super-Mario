@@ -36,14 +36,14 @@ class CustomReward(Wrapper):
         #normalize the state
         state = state / 255.
 
-        # reward += (info["score"] - self.curr_score) / 40.
-        # self.curr_score = info["score"]
+        reward += (info["score"] - self.curr_score) / 40.
+        self.curr_score = info["score"]
         if done:
             if info["flag_get"]:
-                reward += 500
+                reward += 50
             else:
                 reward -= 50
-        return state, reward, done, trunc, info  
+        return state, reward / 10., done, trunc, info  
 
     def reset(self):
         self.curr_score = 0
@@ -75,3 +75,7 @@ def create_train_env(world='1', stage='1', action_type="complex", render = False
     # Stack frames (e.g., stack 4 frames)
     env = FrameStack(env, num_stack=4)
     return env, env.observation_space.shape[0], len(actions)
+
+
+
+

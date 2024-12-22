@@ -44,7 +44,7 @@ class MetricLogger:
         # Timing
         self.record_time = time.time()
 
-    def log_episode(self, global_episode, total_reward, actor_loss, critic_loss, entropy_loss, total_loss):
+    def log_episode(self, global_episode, total_reward, actor_loss, critic_loss, entropy_loss, total_loss, completions):
         """Log metrics at the end of an episode."""
         self.ep_rewards.append(total_reward)
         self.ep_actor_losses.append(actor_loss)
@@ -79,7 +79,7 @@ class MetricLogger:
                 f"Entropy Loss {entropy_loss:.4f} - Total Reward {total_reward:.2f} - " 
                 f"Total Loss {total_loss:.4f} - "
                 f"Time Delta {time_since_last_record:.3f} - "
-                f"Time {datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}"
+                f"Time {datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')} - Completions {completions}"
             )
 
         with open(self.save_log, "a") as f:
