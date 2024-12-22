@@ -14,15 +14,16 @@ import os
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = 'cpu'
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = 'cpu'
 
 
+mp = _mp.get_context('spawn') # Create a new context for multiprocessing --> without, deadlock
 
 
 def train(init_ep = 0):
     print(init_ep)
-    mp = _mp.get_context('spawn') # Create a new context for multiprocessing --> without, deadlock
+    os.environ['OMP_NUM_THREADS'] = '1'
 
     # Create environment
     _, input_dim, action_dim = create_train_env(action_type = ACTION_TYPE)
@@ -36,6 +37,7 @@ def train(init_ep = 0):
     # Create global model and optimizer
     global_model = ActorCritic(input_dim, action_dim).to(device)
     global_model.share_memory()
+
     if init_ep != 0:
         global_model.load_state_dict(torch.load(f"checkpoints/a3c_1_1_episode_{init_ep}.pt"))
     optimizer = GlobalAdam(global_model.parameters(), lr = LR)
@@ -48,10 +50,16 @@ def train(init_ep = 0):
     else:
         global_episode = mp.Value('i', init_ep)
     logger = MetricLogger(LOG_PATH, init_ep)
+
+    categorical_workers = NUM_WORKERS - ARGMAX_WORKERS
+
     # Start workers
     workers = []
-    for _ in range(NUM_WORKERS):
-        worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger))
+    for i in range(NUM_WORKERS):
+        if i < categorical_workers:
+            worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger))
+        else:
+            worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False))
         workers.append(worker_process)
         worker_process.start()
     

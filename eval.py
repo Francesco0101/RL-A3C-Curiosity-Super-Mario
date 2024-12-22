@@ -7,7 +7,7 @@ from torch.distributions import Categorical
 from utils import save
 from constants import *
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
 
 def eval():
@@ -16,7 +16,7 @@ def eval():
 
     model = ActorCritic(num_states, num_actions).to(device)
 
-    model.load_state_dict(torch.load("checkpoints/a3c_1_1_episode_20500.pt"))
+    model.load_state_dict(torch.load("checkpoints/a3c_1_1_episode_0.pt"))
     model.eval()
     
     state, _ = env.reset()
