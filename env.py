@@ -51,30 +51,44 @@ class CustomReward(Wrapper):
         self.prev_stat = 0
         self.prev_score = 0
         self.prev_dist = 40
+        self.counter = 0
+        self.milestones = [i for i in range(150,3150,150)]
         
     def step(self, action):
         
         state, _, done, trunc ,info = self.env.step(action)    
         #normalize the state
         state = state / 255.
+        if REWARD_TYPE == "dense":
+            # Implementing custom rewards
+            reward = max(min((info['x_pos'] - self.prev_dist - 0.05), 2), -2)
+            self.prev_dist = info['x_pos']
+            reward += (self.prev_time - info['time'])* -0.1
+            self.prev_time = info['time']
 
-        # Implementing custom rewards
-        reward = max(min((info['x_pos'] - self.prev_dist - 0.05), 2), -2)
-        self.prev_dist = info['x_pos']
-        reward += (self.prev_time - info['time'])* -0.1
-        self.prev_time = info['time']
+            reward += (int(info['status']!='small')  - self.prev_stat) * 5
+            self.prev_stat = int(info['status']!='small')
 
-        reward += (int(info['status']!='small')  - self.prev_stat) * 5
-        self.prev_stat = int(info['status']!='small')
+            reward += (info['score'] - self.prev_score) * 0.025
+            self.prev_score = info['score']
 
-        reward += (info['score'] - self.prev_score) * 0.025
-        self.prev_score = info['score']
-
-        if done:
-            if info['flag_get'] :
-                reward += 500
-            else:
-                reward -= 50
+            if done:
+                if info['flag_get'] :
+                    reward += 500
+                else:
+                    reward -= 50
+        elif REWARD_TYPE == "sparse":
+            reward = 0
+            if (self.counter < len(self.milestones)) and (info['x_pos'] > self.milestones[self.counter])  : 
+                reward = 10 
+                self.counter = self.counter + 1
+            if done :
+                if info['flag_get'] :
+                    reward = 50
+                else:
+                    reward = -10
+        else:
+            reward = 0
         return state, reward/10, done, trunc , info
 
     def reset(self):

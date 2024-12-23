@@ -5,19 +5,25 @@ from torch.distributions import Categorical
 from env import create_train_env
 from constants import *
 from model import ActorCritic
+from icm import ICM
 from utils import save
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
 # Worker Process
-def worker(global_model, optimizer, global_episode, max_episodes, logger, categorical = True, renderer = False):
+def worker(global_model, optimizer, global_episode, max_episodes, logger, categorical = True, renderer = False, global_icm = None):
     name = _mp.current_process().name
-
-    local_model = ActorCritic(global_model.state_dict()['common.0.weight'].shape[1], global_model.state_dict()['actor.bias'].shape[0]).to(device)
+    env, state_dim, action_dim = create_train_env(action_type= ACTION_TYPE, render = renderer)
+    local_model = ActorCritic(state_dim, action_dim).to(device)
     local_model.load_state_dict(global_model.state_dict())
     local_model.train()
 
-    env, _, _ = create_train_env(action_type= ACTION_TYPE, render = renderer)
+    if global_icm is not None:
+        curiosity_model = ICM(state_dim, action_dim).to(device)
+        curiosity_model.load_state_dict(global_icm.state_dict())
+        curiosity_model.train()
+
+    
 
     state, _ = env.reset()
     local_episode = int(global_episode.value / NUM_WORKERS)
@@ -29,6 +35,8 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
         values = []
         rewards = []
         entropies = []
+        forward_losses = []
+        inverse_losses = []
         local_episode += 1
 
 
@@ -40,6 +48,8 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
             h_0 = h_0.detach()
             c_0 = c_0.detach()
         local_model.load_state_dict(global_model.state_dict())
+        if global_icm is not None:
+            curiosity_model.load_state_dict(global_icm.state_dict())
         # Rollout loop
         for _ in range(NUM_LOCAL_STEPS):
             local_steps += 1
@@ -60,11 +70,29 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
                 action = torch.argmax(logits).item()
             
             next_state, reward, done, _, _= env.step(action)
+
+            if global_icm is not None:
+                action_one_onehot = torch.zeros(1, action_dim).to(device)
+                action_one_onehot[0, action] = 1
+                next_state_icm = torch.tensor(np.array(next_state), dtype=torch.float32).unsqueeze(0).to(device)
+                s_t1_pred, a_t0_pred, s_t1 = curiosity_model(state, next_state_icm, action_one_onehot)
+                inverse_loss = torch.nn.CrossEntropyLoss()(s_t1_pred, torch.tensor([action]).to(device)) / action_dim
+                forward_loss = torch.nn.MSELoss()(a_t0_pred, s_t1)
+                print("Forward Loss: ", forward_loss)
+                intrinsic_reward = ETA * forward_loss
+                print("Intrinsic Reward: ", intrinsic_reward)
+                reward += intrinsic_reward.item()
+                reward = max(min(reward, 50), -5)
+
+
             
             log_probs.append(log_action_probs[0, action])
             values.append(value)
             rewards.append(reward)
             entropies.append(entropy)
+            if global_icm is not None:
+                forward_losses.append(forward_loss)
+                inverse_losses.append(inverse_loss)
 
             state = next_state
             if local_steps > NUM_GLOBAL_STEPS:
@@ -85,10 +113,9 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
         gae = torch.zeros(1, 1).to(device)
         policy_loss = 0
         value_loss = 0
+        curiosity_loss = 0
         total_reward = sum(rewards)
         next_value = R
-      
-
         for value, reward, log_prob, entropy in list(zip(values, rewards, log_probs, entropies))[::-1]:
             # print("value: ", value)
             # print("reward: ", reward)
@@ -96,14 +123,18 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
             next_value = value
             R = GAMMA * R + reward
             value_loss += 0.5 * (R - value).pow(2) 
-            policy_loss -= log_prob * gae - BETA * entropy
+            policy_loss -= log_prob * gae - ENTROPY_COEFF * entropy
+
+            if global_icm is not None:
+                curiosity_loss += (1-BETA) * inverse_loss + BETA * forward_loss
 
         
-        total_loss = policy_loss + value_loss * VALUE_LOSS_COEF
+        total_loss = LAMBDA * (policy_loss + value_loss * VALUE_LOSS_COEF) + 10.0 * curiosity_loss
         # Backpropagation
         optimizer.zero_grad()
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(local_model.parameters(), MAX_GRAD_NORM)
+        torch.nn.utils.clip_grad_norm_(curiosity_model.parameters(), MAX_GRAD_NORM)
 
         for global_param, local_param in zip(global_model.parameters(), local_model.parameters()):
             if global_param.grad is not None:
@@ -117,7 +148,17 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
             global_episode.value += 1
 
         if global_episode.value % SAVE_EPISODE_INTERVAL == 0 and global_episode.value > 0:
-                torch.save(global_model.state_dict(),
-                            "{}/a3c_{}_{}_episode_{}.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value ))
+                if global_icm is not None:
+                    torch.save(global_model.state_dict(),
+                            "{}/a3c_{}_{}_episode_{}_curiosity.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value ))
+                    torch.save(global_icm.state_dict(),
+                            "{}/icm_{}_{}_episode_{}.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value ))
+                else:
+                    torch.save(global_model.state_dict(),
+                            "{}/a3c_{}_{}_episode_{}.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value))
                 
-        logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item())
+        if global_icm is None:   
+            logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item(), 0, 0)
+        else:
+            logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item(), forward_loss.item(), inverse_loss.item())
+        logger.plot_metrics()
