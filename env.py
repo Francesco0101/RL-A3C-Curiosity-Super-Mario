@@ -5,7 +5,7 @@ from gym.spaces import Box
 from gym import Wrapper
 from nes_py.wrappers import JoypadSpace
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
-
+from constants import *
 
 
 PALETTE_ACTIONS = [['NOOP'],
@@ -113,7 +113,7 @@ class NormalizedEnv(gym.ObservationWrapper):
 
 
 
-def create_train_env(world='1', stage='1', action_type="complex", render = False):
+def create_train_env(world=WORLD, stage=STAGE, action_type="complex", render = False):
     if render:
         env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage),render_mode = 'human', apply_api_compatibility=True)
     else:

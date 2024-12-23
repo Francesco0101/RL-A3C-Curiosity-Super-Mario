@@ -57,9 +57,15 @@ def train(init_ep = 0):
     workers = []
     for i in range(NUM_WORKERS):
         if i < categorical_workers:
-            worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger))
+            if i == 0:
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, True))
+            else:
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False))
         else:
-            worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False))
+            if i == categorical_workers:
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, True))
+            else:
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False))
         workers.append(worker_process)
         worker_process.start()
     
@@ -71,5 +77,5 @@ def train(init_ep = 0):
     logger.plot_metrics()
 
 if __name__ == "__main__":
-    init_ep = 0 #cambiare a mano per continuare il training
+    init_ep = 27000 #cambiare a mano per continuare il training
     train(init_ep)
