@@ -7,11 +7,11 @@ from constants import *
 from model import ActorCritic
 from icm import ICM
 from utils import save
-
+import os
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
 # Worker Process
-def worker(global_model, optimizer, global_episode, max_episodes, logger, categorical = True, renderer = False, global_icm = None):
+def worker(global_model, optimizer, global_episode, max_episodes, logger, categorical = True, renderer = False, global_icm = None, save_path = SAVE_PATH):
     name = _mp.current_process().name
     env, state_dim, action_dim = create_train_env(action_type= ACTION_TYPE, render = renderer)
     local_model = ActorCritic(state_dim, action_dim).to(device)
@@ -54,9 +54,7 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
         for _ in range(NUM_LOCAL_STEPS):
             local_steps += 1
          
-            state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0).to(device)
-            #if the name of the process is the first one save
-
+            state = torch.tensor(np.array(state), dtype=torch.float32).unsqueeze(0).to(device)            
             logits, value, h_0 , c_0 = local_model(state, h_0, c_0) 
             # print("Critic value (before storing):", value)
             action_probs = torch.softmax(logits, dim=-1)
@@ -76,11 +74,14 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
                 action_one_onehot[0, action] = 1
                 next_state_icm = torch.tensor(np.array(next_state), dtype=torch.float32).unsqueeze(0).to(device)
                 s_t1_pred, a_t0_pred, s_t1 = curiosity_model(state, next_state_icm, action_one_onehot)
+                # print("s_t1_pred: ", s_t1_pred)
+                # print("a_t0_pred: ", a_t0_pred)
+                # print("s_t1: ", s_t1)
                 inverse_loss = torch.nn.CrossEntropyLoss()(s_t1_pred, torch.tensor([action]).to(device)) / action_dim
                 forward_loss = torch.nn.MSELoss()(a_t0_pred, s_t1)
-                print("Forward Loss: ", forward_loss)
+                # print("Forward Loss: ", forward_loss)
                 intrinsic_reward = ETA * forward_loss
-                print("Intrinsic Reward: ", intrinsic_reward)
+                # print("Intrinsic Reward: ", intrinsic_reward)
                 reward += intrinsic_reward.item()
                 reward = max(min(reward, 50), -5)
 
@@ -134,7 +135,8 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
         optimizer.zero_grad()
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(local_model.parameters(), MAX_GRAD_NORM)
-        torch.nn.utils.clip_grad_norm_(curiosity_model.parameters(), MAX_GRAD_NORM)
+        if global_icm is not None:
+            torch.nn.utils.clip_grad_norm_(curiosity_model.parameters(), MAX_GRAD_NORM)
 
         for global_param, local_param in zip(global_model.parameters(), local_model.parameters()):
             if global_param.grad is not None:
@@ -146,16 +148,20 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
         # Update global episode counter
         with global_episode.get_lock():
             global_episode.value += 1
+        #save models
+        if global_episode.value % SAVE_EPISODE_INTERVAL == 0:
+            save_path_a3c = save_path + "/a3c_" +str(WORLD) + "_"+ str(STAGE) + "_episode_" + str(global_episode.value)+".pt"
+            if global_icm is not None:
+                save_path_icm = save_path + "/icm_" +str(WORLD) + "_"+ str(STAGE) + "_episode_" + str(global_episode.value)+".pt"
 
-        if global_episode.value % SAVE_EPISODE_INTERVAL == 0 and global_episode.value > 0:
-                if global_icm is not None:
+            if global_icm is not None:
                     torch.save(global_model.state_dict(),
-                            "{}/a3c_{}_{}_episode_{}_curiosity.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value ))
+                            save_path_a3c)
                     torch.save(global_icm.state_dict(),
-                            "{}/icm_{}_{}_episode_{}.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value ))
-                else:
+                            save_path_icm)
+            else:
                     torch.save(global_model.state_dict(),
-                            "{}/a3c_{}_{}_episode_{}.pt".format(SAVE_PATH, WORLD, STAGE, global_episode.value))
+                            save_path_a3c)
                 
         if global_icm is None:   
             logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item(), 0, 0)

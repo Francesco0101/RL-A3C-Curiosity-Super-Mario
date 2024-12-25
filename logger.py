@@ -5,15 +5,34 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import os 
 import shutil
+from constants import *
 
 class MetricLogger:
-    def __init__(self, save_dir, init_ep):
-        #if the folder exists reset it
-        self.save_log = save_dir +"/log.txt"
+    def __init__(self, save_dir, init_ep, icm=False):
+
+        if icm:
+            save_dir = save_dir + "curiosity/"
+        else:
+            save_dir = save_dir + "no_curiosity/"
+        
+        if REWARD_TYPE == "dense":
+            save_dir = save_dir + "dense/"
+        elif REWARD_TYPE == "sparse":
+            save_dir = save_dir + "sparse/"
+        else:
+            save_dir = save_dir + "no_reward/"
+    
+        prefix = save_dir + "log_"
+        save_dir = prefix + str(0)
+
         if init_ep == 0:
-            path = Path(save_dir)
-            if path.exists():
-                shutil.rmtree(path)
+            i = 0
+            exist = os.path.exists(save_dir)
+            while exist:
+                i += 1
+                save_dir = prefix + str(i)
+             
+                exist = os.path.exists(save_dir)
             os.makedirs(save_dir, exist_ok=True)
             with open(self.save_log, "w") as f:
                 f.write(
@@ -21,6 +40,19 @@ class MetricLogger:
                     f"{'Total Reward':>15}{'Total Loss':>15}{'Forward Loss':>15}{'Inverse Loss':>15}{'Time Delta':>15}"
                     f"{'Time':>20}\n"
                 )
+        else:
+            i = 0
+            exist = os.path.exists(save_dir)
+            while exist:
+                i += 1
+                save_dir = prefix + str(i)
+                exist = os.path.exists(save_dir)
+            save_dir = prefix + str(i-1)
+
+        self.save_log = save_dir +"/log.txt"
+
+
+        self.save_log = save_dir +"/log.txt"
         self.policy_losses_plot = save_dir+ "/policy_loss_plot.jpg"
         self.value_losses_plot = save_dir+ "/value_loss_plot.jpg"
         self.rewards_plot = save_dir+ "/reward_plot.jpg"
@@ -89,6 +121,7 @@ class MetricLogger:
                 f"Time Delta {time_since_last_record:.3f} - "
                 f"Time {datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}"
             )
+            self.plot_metrics()
 
         with open(self.save_log, "a") as f:
             f.write(

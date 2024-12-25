@@ -30,11 +30,38 @@ def train(init_ep = 0, icm = False):
     _, input_dim, action_dim = create_train_env(action_type = ACTION_TYPE)
     print("action_dim: ", action_dim)
     print("input_dim: ", input_dim)
-    save_path = Path(SAVE_PATH)
+
+    save_path = SAVE_PATH
+    if icm == True:
+        save_path = save_path + "/curiosity/"
+    else:
+        save_path = save_path + "/no_curiosity/"
+    
+    if REWARD_TYPE == "dense":
+        save_path = save_path + "/dense/"
+    elif REWARD_TYPE == "sparse":
+        save_path = save_path + "/sparse/"
+    else:
+        save_path = save_path + "/no_reward/"
+
+    new_save_path = save_path + "save_" + str(0)
     if init_ep == 0:
-        if save_path.exists():
-            shutil.rmtree(save_path)
-        os.makedirs(save_path, exist_ok=True)
+        save = 0
+        exist = os.path.exists(new_save_path)
+        while exist:
+            save += 1
+            new_save_path = save_path + "save_" + str(save)
+            exist = os.path.exists(new_save_path)
+        os.makedirs(new_save_path, exist_ok=True)
+    else:
+        save = 0
+        exist = os.path.exists(new_save_path)
+        while exist:
+            save += 1
+            new_save_path = save_path + "save_" + str(save)
+            exist = os.path.exists(new_save_path)
+        new_save_path = save_path + "save_" + str(save-1)
+
     # Create global model and optimizer
     global_model = ActorCritic(input_dim, action_dim).to(device)
     global_model.share_memory()
@@ -46,7 +73,7 @@ def train(init_ep = 0, icm = False):
         global_icm = None
 
     if init_ep != 0:
-        global_model.load_state_dict(torch.load(f"checkpoints/a3c_1_1_episode_{init_ep}.pt"))
+        global_model.load_state_dict(torch.load(f"{new_save_path}/a3c_{WORLD}_{STAGE}_episode_{init_ep}.pt"))
 
     if icm == True:
         optimizer = GlobalAdam(list(global_model.parameters()) + list(global_icm.parameters()), lr = LR)
@@ -60,7 +87,7 @@ def train(init_ep = 0, icm = False):
         global_episode = mp.Value('i', 0)
     else:
         global_episode = mp.Value('i', init_ep)
-    logger = MetricLogger(LOG_PATH, init_ep)
+    logger = MetricLogger(LOG_PATH, init_ep, icm)
 
     categorical_workers = NUM_WORKERS - ARGMAX_WORKERS
 
@@ -69,14 +96,14 @@ def train(init_ep = 0, icm = False):
     for i in range(NUM_WORKERS):
         if i < categorical_workers:
             if i == 0:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, True, global_icm))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, True, global_icm, new_save_path))
             else:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm, new_save_path))
         else:
             if i == categorical_workers:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, True, global_icm))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, True, global_icm, new_save_path))
             else:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm, new_save_path))
         workers.append(worker_process)
         worker_process.start()
     
@@ -88,6 +115,6 @@ def train(init_ep = 0, icm = False):
     logger.plot_metrics()
 
 if __name__ == "__main__":
-    init_ep = 0 #cambiare a mano per continuare il training
-    icm = True
+    init_ep = 40 #cambiare a mano per continuare il training
+    icm = False
     train(init_ep, icm)
