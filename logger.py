@@ -113,7 +113,7 @@ class MetricLogger:
         self.record_time = time.time()
         time_since_last_record = np.round(self.record_time - last_record_time, 3)
 
-        if( global_episode % 500 == 0):
+        if( global_episode % LOG_EPISODE_INTERVAL == 0):
             print(
                 f"Global Episode {global_episode} - " 
                 f"policy Loss {policy_loss:.4f} - value Loss {value_loss:.4f} - "
