@@ -98,12 +98,12 @@ def train(init_ep = 0, icm = False):
     for i in range(NUM_WORKERS):
         if i < categorical_workers:
             if i == 0:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, True, global_icm, new_save_path))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm, new_save_path))
             else:
                 worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm, new_save_path))
         else:
             if i == categorical_workers:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, True, global_icm, new_save_path))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm, new_save_path))
             else:
                 worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm, new_save_path))
         workers.append(worker_process)
@@ -118,5 +118,5 @@ def train(init_ep = 0, icm = False):
 
 if __name__ == "__main__":
     init_ep = 0 #cambiare a mano per continuare il training
-    icm = False
+    icm = True
     train(init_ep, icm)

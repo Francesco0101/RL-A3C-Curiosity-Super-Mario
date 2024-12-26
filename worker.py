@@ -77,14 +77,13 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
                 action_one_onehot[0, action] = 1
                 next_state_icm = torch.tensor(np.array(next_state), dtype=torch.float32).unsqueeze(0).to(device)
                 s_t1_pred, a_t0_pred, s_t1 = curiosity_model(state, next_state_icm, action_one_onehot)
-                # print("s_t1_pred: ", s_t1_pred)
-                # print("a_t0_pred: ", a_t0_pred)
-                # print("s_t1: ", s_t1)
+
                 inverse_loss = torch.nn.CrossEntropyLoss()(s_t1_pred, torch.tensor([action]).to(device)) / action_dim
-                forward_loss = torch.nn.MSELoss()(a_t0_pred, s_t1)
+                mse_loss = torch.nn.MSELoss(reduction='none')  # Nessuna riduzione (no media o somma)
+                forward_loss = mse_loss(a_t0_pred, s_t1).sum(-1, keepdim=True) / 2 
                 # print("Forward Loss: ", forward_loss)
+                # print("Inverse Loss: ", inverse_loss)
                 intrinsic_reward = ETA * forward_loss
-                # print("Intrinsic Reward: ", intrinsic_reward)
                 reward += intrinsic_reward.item()
                 reward = max(min(reward, 50), -5)
 
@@ -147,6 +146,12 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
             if global_param.grad is not None:
                 break
             global_param._grad = local_param.grad
+        
+        if global_icm is not None:
+            for global_icm_param, local_icm_param in zip(global_icm.parameters(), curiosity_model.parameters()):
+                if global_icm_param.grad is not None:
+                    break
+                global_icm_param._grad = local_icm_param.grad
 
         optimizer.step()
 

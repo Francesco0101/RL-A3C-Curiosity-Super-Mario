@@ -1,10 +1,12 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 def normalized_columns_initializer(weights, std=1.0):
     out = torch.randn(weights.size())
     out *= std / torch.sqrt(out.pow(2).sum(1, keepdim=True))
     return out
+
 
 class ICM(nn.Module):
     def __init__(self, input_dim, action_dim):
