@@ -115,6 +115,6 @@ def train(init_ep = 0, icm = False):
     logger.plot_metrics()
 
 if __name__ == "__main__":
-    init_ep = 40 #cambiare a mano per continuare il training
+    init_ep = 0 #cambiare a mano per continuare il training
     icm = False
     train(init_ep, icm)

@@ -34,12 +34,6 @@ class MetricLogger:
              
                 exist = os.path.exists(save_dir)
             os.makedirs(save_dir, exist_ok=True)
-            with open(self.save_log, "w") as f:
-                f.write(
-                    f"{'Episode':>8}{'Policy Loss':>15}{'Value Loss':>15}"
-                    f"{'Total Reward':>15}{'Total Loss':>15}{'Forward Loss':>15}{'Inverse Loss':>15}{'Time Delta':>15}"
-                    f"{'Time':>20}\n"
-                )
         else:
             i = 0
             exist = os.path.exists(save_dir)
@@ -50,9 +44,18 @@ class MetricLogger:
             save_dir = prefix + str(i-1)
 
         self.save_log = save_dir +"/log.txt"
-
-
-        self.save_log = save_dir +"/log.txt"
+        self.save_reward_distance = save_dir + "/reward_distance.txt"
+        if init_ep ==0:
+            with open(self.save_log, "w") as f:
+                f.write(
+                    f"{'Episode':>8}{'Policy Loss':>15}{'Value Loss':>15}"
+                    f"{'Total Reward':>15}{'Total Loss':>15}{'Forward Loss':>15}{'Inverse Loss':>15}{'Time Delta':>15}"
+                    f"{'Time':>20}\n"
+            )
+            with open(self.save_reward_distance, "w") as f:
+                f.write(
+                    f"{'Reward':>15}{'Distance':>15}\n"
+                )
         self.policy_losses_plot = save_dir+ "/policy_loss_plot.jpg"
         self.value_losses_plot = save_dir+ "/value_loss_plot.jpg"
         self.rewards_plot = save_dir+ "/reward_plot.jpg"
@@ -128,6 +131,12 @@ class MetricLogger:
                 f"{global_episode:8d}{policy_loss:15.4f}{value_loss:15.4f}"
                 f"{total_reward:15.2f}{total_loss:15.4f}{forward_loss:15.4f}{inverse_loss:15.4f}{time_since_last_record:15.3f}"
                 f"{datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'):>20}\n"
+            )
+            
+    def log_reward_distance(self, reward, distance):
+        with open(self.save_reward_distance, "a") as f:
+            f.write(
+                f"{reward:15.4f}{distance:15.4f}\n"
             )
 
     def plot_metrics(self):

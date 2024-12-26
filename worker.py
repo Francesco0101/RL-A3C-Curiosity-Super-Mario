@@ -10,6 +10,7 @@ from utils import save
 import os
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
+x_norm = 3161
 # Worker Process
 def worker(global_model, optimizer, global_episode, max_episodes, logger, categorical = True, renderer = False, global_icm = None, save_path = SAVE_PATH):
     name = _mp.current_process().name
@@ -29,6 +30,7 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
     local_episode = int(global_episode.value / NUM_WORKERS)
     local_steps = 0
     done = True
+    rewards_done = 0
     
     while local_episode < max_episodes:
         log_probs = []
@@ -67,7 +69,8 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
             else:
                 action = torch.argmax(logits).item()
             
-            next_state, reward, done, _, _= env.step(action)
+            next_state, reward, done, _, info= env.step(action)
+            rewards_done += reward
 
             if global_icm is not None:
                 action_one_onehot = torch.zeros(1, action_dim).to(device)
@@ -101,6 +104,8 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
         
             if done:
                 local_steps = 0
+                logger.log_reward_distance(rewards_done, info['x_pos']/x_norm)
+                rewards_done = 0
                 state, _ = env.reset()
                 break
                 
