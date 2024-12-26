@@ -43,8 +43,8 @@ class MetricLogger:
                 exist = os.path.exists(save_dir)
             save_dir = prefix + str(i-1)
 
-        self.save_log = save_dir +"/log.txt"
-        self.save_reward_distance = save_dir + "/reward_distance.txt"
+        self.save_log = save_dir +f"/log_{WORLD}_{STAGE}.txt"
+        self.save_reward_distance = save_dir + f"/reward_distance_{WORLD}_{STAGE}.txt"
         if init_ep ==0:
             with open(self.save_log, "w") as f:
                 f.write(
