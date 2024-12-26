@@ -155,9 +155,9 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
             global_episode.value += 1
         #save models
         if global_episode.value % SAVE_EPISODE_INTERVAL == 0:
-            save_path_a3c = save_path + "/a3c_" +str(WORLD) + "_"+ str(STAGE) + "_episode_" + str(global_episode.value)+".pt"
+            save_path_a3c = save_path + "/a3c" + "_episode_" + str(global_episode.value)+".pt"
             if global_icm is not None:
-                save_path_icm = save_path + "/icm_" +str(WORLD) + "_"+ str(STAGE) + "_episode_" + str(global_episode.value)+".pt"
+                save_path_icm = save_path + "/icm" + "_episode_" + str(global_episode.value)+".pt"
 
             if global_icm is not None:
                     torch.save(global_model.state_dict(),

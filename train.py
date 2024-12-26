@@ -44,6 +44,8 @@ def train(init_ep = 0, icm = False):
     else:
         save_path = save_path + "/no_reward/"
 
+    save_path = save_path + f"{WORLD}_{STAGE}/"
+
     new_save_path = save_path + "save_" + str(0)
     if init_ep == 0:
         save = 0

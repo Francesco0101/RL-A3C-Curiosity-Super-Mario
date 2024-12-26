@@ -21,7 +21,9 @@ class MetricLogger:
             save_dir = save_dir + "sparse/"
         else:
             save_dir = save_dir + "no_reward/"
-    
+
+        save_dir += f"{WORLD}_{STAGE}/"
+
         prefix = save_dir + "log_"
         save_dir = prefix + str(0)
 
@@ -43,8 +45,8 @@ class MetricLogger:
                 exist = os.path.exists(save_dir)
             save_dir = prefix + str(i-1)
 
-        self.save_log = save_dir +f"/log_{WORLD}_{STAGE}.txt"
-        self.save_reward_distance = save_dir + f"/reward_distance_{WORLD}_{STAGE}.txt"
+        self.save_log = save_dir +f"/log.txt"
+        self.save_reward_distance = save_dir + f"/reward_distance.txt"
         if init_ep ==0:
             with open(self.save_log, "w") as f:
                 f.write(
