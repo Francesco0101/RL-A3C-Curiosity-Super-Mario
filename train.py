@@ -33,16 +33,16 @@ def train(init_ep = 0, icm = False):
 
     save_path = SAVE_PATH
     if icm == True:
-        save_path = save_path + "/curiosity/"
+        save_path = save_path + "curiosity/"
     else:
-        save_path = save_path + "/no_curiosity/"
+        save_path = save_path + "no_curiosity/"
     
     if REWARD_TYPE == "dense":
-        save_path = save_path + "/dense/"
+        save_path = save_path + "dense/"
     elif REWARD_TYPE == "sparse":
-        save_path = save_path + "/sparse/"
+        save_path = save_path + "sparse/"
     else:
-        save_path = save_path + "/no_reward/"
+        save_path = save_path + "no_reward/"
 
     save_path = save_path + f"{WORLD}_{STAGE}/"
 
@@ -75,7 +75,7 @@ def train(init_ep = 0, icm = False):
         global_icm = None
 
     if init_ep != 0:
-        global_model.load_state_dict(torch.load(f"{new_save_path}/a3c_{WORLD}_{STAGE}_episode_{init_ep}.pt"))
+        global_model.load_state_dict(torch.load(f"{new_save_path}/a3c_episode_{init_ep}.pt"))
 
     if icm == True:
         optimizer = GlobalAdam(list(global_model.parameters()) + list(global_icm.parameters()), lr = LR)
@@ -117,6 +117,6 @@ def train(init_ep = 0, icm = False):
     logger.plot_metrics()
 
 if __name__ == "__main__":
-    init_ep = 0 #cambiare a mano per continuare il training
+    init_ep = 6000 #cambiare a mano per continuare il training
     icm = True
     train(init_ep, icm)
