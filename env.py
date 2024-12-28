@@ -96,6 +96,7 @@ class CustomReward(Wrapper):
         self.prev_stat = 0
         self.prev_score = 0
         self.prev_dist = 40
+        self.counter = 0
         state , info = self.env.reset()
         state = state / 255.
         return state, info
