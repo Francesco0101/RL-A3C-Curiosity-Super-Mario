@@ -1,18 +1,18 @@
 import torch
-from  model import ActorCritic
-from env import create_train_env
-from constants import WORLD, STAGE
+from models.model import ActorCritic
+from environment.env import create_train_env
+from utils.constants import WORLD, STAGE
 import numpy as np
 from torch.distributions import Categorical
-from utils import save
-from constants import *
+from utils.utils import save
+from utils.constants import *
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
 
 def eval():
     # torch.manual_seed(123)
-    env, num_states, num_actions = create_train_env(action_type= ACTION_TYPE, render = True)
+    env, num_states, num_actions = create_train_env( render = True)
 
     model = ActorCritic(num_states, num_actions).to(device)
 

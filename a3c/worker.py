@@ -2,11 +2,11 @@ import torch
 import torch.multiprocessing as _mp
 import numpy as np
 from torch.distributions import Categorical
-from env import create_train_env
-from constants import *
-from model import ActorCritic
-from icm import ICM
-from utils import save
+from environment.env import create_train_env
+from utils.constants import *
+from models.model import ActorCritic
+from models.icm import ICM
+from utils.utils import save
 import os
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
@@ -14,7 +14,7 @@ x_norm = 3161
 # Worker Process
 def worker(global_model, optimizer, global_episode, max_episodes, logger, categorical = True, renderer = False, global_icm = None, save_path = SAVE_PATH):
     name = _mp.current_process().name
-    env, state_dim, action_dim = create_train_env(action_type= ACTION_TYPE, render = renderer)
+    env, state_dim, action_dim = create_train_env(render = renderer)
     local_model = ActorCritic(state_dim, action_dim).to(device)
     local_model.load_state_dict(global_model.state_dict())
     local_model.train()
@@ -121,19 +121,25 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
         curiosity_loss = 0
         total_reward = sum(rewards)
         next_value = R
-        for value, reward, log_prob, entropy in list(zip(values, rewards, log_probs, entropies))[::-1]:
-            # print("value: ", value)
-            # print("reward: ", reward)
-            gae = gae * GAMMA * TAU + reward + GAMMA * next_value.detach() - value.detach()
-            next_value = value
-            R = GAMMA * R + reward
-            value_loss += 0.5 * (R - value).pow(2) 
-            policy_loss -= log_prob * gae - ENTROPY_COEFF * entropy
-
-            if global_icm is not None:
+        if global_icm is None:
+            for value, reward, log_prob, entropy in list(zip(values, rewards, log_probs, entropies))[::-1]:
+                # print("value: ", value)
+                # print("reward: ", reward)
+                gae = gae * GAMMA * TAU + reward + GAMMA * next_value.detach() - value.detach()
+                next_value = value
+                R = GAMMA * R + reward
+                value_loss += 0.5 * (R - value).pow(2) 
+                policy_loss -= log_prob * gae - ENTROPY_COEFF * entropy
+        else:
+            for value, reward, log_prob, entropy, inverse_loss, forward_loss in list(zip(values, rewards, log_probs, entropies, inverse_losses, forward_losses))[::-1]:
+                # print("value: ", value)
+                # print("reward: ", reward)
+                gae = gae * GAMMA * TAU + reward + GAMMA * next_value.detach() - value.detach()
+                next_value = value
+                R = GAMMA * R + reward
+                value_loss += 0.5 * (R - value).pow(2) 
+                policy_loss -= log_prob * gae - ENTROPY_COEFF * entropy
                 curiosity_loss += (1-BETA) * inverse_loss + BETA * forward_loss
-
-        
         total_loss = LAMBDA * (policy_loss + value_loss * VALUE_LOSS_COEF) + 10.0 * curiosity_loss
         # Backpropagation
         optimizer.zero_grad()
@@ -174,7 +180,6 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
                             save_path_a3c)
                 
         if global_icm is None:   
-            logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item(), 0, 0)
+            logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item(), 0)
         else:
-            logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item(), forward_loss.item(), inverse_loss.item())
-        logger.plot_metrics()
+            logger.log_episode(global_episode.value, total_reward, policy_loss.item(), value_loss.item(), total_loss.item(), curiosity_loss.item())

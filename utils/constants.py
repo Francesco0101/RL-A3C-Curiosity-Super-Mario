@@ -1,6 +1,5 @@
 WORLD = 1
 STAGE = 1
-ACTION_TYPE  = "simple"
 LR = 1e-4
 GAMMA = 0.9
 TAU = 1.0
@@ -19,4 +18,4 @@ SAVE_PATH = "checkpoints/"
 LAMBDA = 1.0
 ETA = 0.2
 BETA = 0.2
-REWARD_TYPE = "dense"
+REWARD_TYPE = "sparse"

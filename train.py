@@ -1,16 +1,16 @@
 import torch
 import torch.multiprocessing as _mp
-from env import create_train_env
-from model import ActorCritic
-from worker import worker
-from shared_optim import GlobalAdam
-from constants import *
+from environment.env import create_train_env
+from models.model import ActorCritic
+from a3c.worker import worker
+from optimizer.shared_optim import GlobalAdam
+from utils.constants import *
 import warnings
 from pathlib import Path
-from logger import MetricLogger
+from utils.logger import MetricLogger
 import shutil
 import os
-from icm import ICM
+from models.icm import ICM
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -27,7 +27,7 @@ def train(init_ep = 0, icm = False):
     os.environ['OMP_NUM_THREADS'] = '1'
 
     # Create environment
-    _, input_dim, action_dim = create_train_env(action_type = ACTION_TYPE)
+    _, input_dim, action_dim = create_train_env()
     print("action_dim: ", action_dim)
     print("input_dim: ", input_dim)
 
@@ -98,12 +98,12 @@ def train(init_ep = 0, icm = False):
     for i in range(NUM_WORKERS):
         if i < categorical_workers:
             if i == 0:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm, new_save_path))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, True, global_icm, new_save_path))
             else:
                 worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm, new_save_path))
         else:
             if i == categorical_workers:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm, new_save_path))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, True, global_icm, new_save_path))
             else:
                 worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm, new_save_path))
         workers.append(worker_process)
@@ -117,6 +117,6 @@ def train(init_ep = 0, icm = False):
     logger.plot_metrics()
 
 if __name__ == "__main__":
-    init_ep = 6000 #cambiare a mano per continuare il training
-    icm = True
+    init_ep = 0 #cambiare a mano per continuare il training
+    icm = False
     train(init_ep, icm)
