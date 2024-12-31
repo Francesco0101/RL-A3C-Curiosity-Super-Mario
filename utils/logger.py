@@ -2,14 +2,15 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
-from pathlib import Path
 import os 
-import shutil
 from utils.constants import *
 
 class MetricLogger:
+    """
+    A utility class for logging and visualizing training metrics.
+    This class handles logging of episode data, reward metrics, and plotting of moving averages.
+    """
     def __init__(self, save_dir, init_ep, icm=False):
-
         if icm:
             save_dir = save_dir + "curiosity/"
         else:
@@ -64,33 +65,27 @@ class MetricLogger:
         self.total_losses_plot = save_dir+ "/total_loss_plot.jpg"
         self.curiosity_losses_plot = save_dir+ "/curiosity_loss_plot.jpg"
         
-        # History metrics
         self.ep_rewards = []
         self.ep_policy_losses = []
         self.ep_value_losses = []
         self.ep_total_losses = []
         self.ep_curiosity_losses = []
         
-        # Moving averages
         self.moving_avg_rewards = []
         self.moving_avg_policy_losses = []
         self.moving_avg_value_losses = []
         self.moving_avg_total_losses = []
         self.moving_avg_curiosity_losses = []
 
-        # Timing
         self.record_time = time.time()
 
     def log_episode(self, global_episode, total_reward, policy_loss, value_loss, total_loss, curiosity_loss):
-        """Log metrics at the end of an episode."""
         self.ep_rewards.append(total_reward)
         self.ep_policy_losses.append(policy_loss)
         self.ep_value_losses.append(value_loss)
         self.ep_total_losses.append(total_loss)
         self.ep_curiosity_losses.append(curiosity_loss)
 
-       
-        # Moving averages over last 100 episodes
         mean_reward = np.round(np.mean(self.ep_rewards[-100:]), 3)
         mean_policy_loss = np.round(np.mean(self.ep_policy_losses[-100:]), 3)
         mean_value_loss = np.round(np.mean(self.ep_value_losses[-100:]), 3)
@@ -103,8 +98,6 @@ class MetricLogger:
         self.moving_avg_total_losses.append(mean_total_loss)
         self.moving_avg_curiosity_losses.append(mean_curiosity_loss)
        
-
-        # Timing
         last_record_time = self.record_time
         self.record_time = time.time()
         time_since_last_record = np.round(self.record_time - last_record_time, 3)
@@ -135,7 +128,6 @@ class MetricLogger:
             )
 
     def plot_metrics(self):
-        """Save the plots for all metrics."""
         for metric, name in zip(
             ["rewards","policy_losses", "value_losses", "total_losses", "curiosity_losses"],
             ["rewards_plot", "policy_losses_plot", "value_losses_plot","total_losses_plot", "curiosity_losses_plot"],

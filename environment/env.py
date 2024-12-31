@@ -4,10 +4,9 @@ import gym_super_mario_bros
 from gym.spaces import Box
 from gym import Wrapper
 from nes_py.wrappers import JoypadSpace
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
 from utils.constants import *
 
-
+# Define the actions used in the environment. Each list represents a set of button presses.
 PALETTE_ACTIONS = [['NOOP'],
  ['up'],
  ['down'],
@@ -28,7 +27,12 @@ PALETTE_ACTIONS = [['NOOP'],
 
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
-        """Return only every `skip`-th frame"""
+        """
+        Custom wrapper to skip a fixed number of frames.
+        Args:
+            env: The environment to wrap.
+            skip: Number of frames to skip.
+        """
         super().__init__(env)
         self._skip = skip
 
@@ -36,15 +40,22 @@ class SkipFrame(gym.Wrapper):
         """Repeat action, and sum reward"""
         total_reward = 0.0
         for i in range(self._skip):
-            # Accumulate reward and repeat the same action
             obs, reward, done, trunk, info = self.env.step(action)
             total_reward += reward
             if done:
                 break
         return obs, total_reward, done, trunk, info
 
+"""
+Took inspiration from the following source: https://github.com/sadeqa/Super-Mario-Bros-RL
+"""
 class CustomReward(Wrapper):
     def __init__(self, env=None):
+        """
+        Custom wrapper to implement a dense, sparse or no reward environment.
+        Args:
+            env: The environment to wrap.
+        """
         super(CustomReward, self).__init__(env)
         self.observation_space = Box(low=0, high=255, shape=(84, 84))
         self.prev_time = 400
@@ -101,9 +112,16 @@ class CustomReward(Wrapper):
         state = state / 255.
         return state, info
 
-
+"""
+Taken from the following source: github.com/ikostrikov/pytorch-a3c
+"""
 class NormalizedEnv(gym.ObservationWrapper):
     def __init__(self, env=None):
+        """
+        Wrapper to normalize observations.
+        Args:
+            env: The environment to wrap.
+        """
         super(NormalizedEnv, self).__init__(env)
         self.state_mean = 0
         self.state_std = 0
@@ -129,6 +147,15 @@ class NormalizedEnv(gym.ObservationWrapper):
 
 
 def create_train_env(world=WORLD, stage=STAGE, render = False):
+    """
+    Initialize the Super Mario Bros environment with preprocessing wrappers.
+    Args:
+        world: World number
+        stage: Stage number
+        render: Whether to render the environment or not
+    Returns:
+        The wrapped environment, observation space shape, and action space size.
+    """
     if render:
         env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage),render_mode = 'human', apply_api_compatibility=True)
     else:
@@ -142,8 +169,8 @@ def create_train_env(world=WORLD, stage=STAGE, render = False):
     env = CustomReward(env)
     # Normalize the observations
     env = NormalizedEnv(env)
-    # SkipFrame wrapper to skip frames for efficiency
+    # SkipFrame wrapper to skip frames
     env = SkipFrame(env, skip=4)
-    # Stack frames (e.g., stack 4 frames)
+    # Stack frames 
     env = FrameStack(env, num_stack=4)
     return env, env.observation_space.shape[0], len(PALETTE_ACTIONS)

@@ -6,27 +6,31 @@ from a3c.worker import worker
 from optimizer.shared_optim import GlobalAdam
 from utils.constants import *
 import warnings
-from pathlib import Path
 from utils.logger import MetricLogger
-import shutil
 import os
 from models.icm import ICM
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cpu'
 
 
-mp = _mp.get_context('spawn') # Create a new context for multiprocessing --> without, deadlock
+mp = _mp.get_context('spawn')
 
 
 def train(init_ep = 0, icm = False):
+    """
+    Function to train the A3C model with or without Intrinsic Curiosity Module (ICM).
+    Handles environment setup, model initialization, and training using multiple worker processes.
+    
+    Parameters:
+    init_ep (int): Initial episode to resume from. Default is 0.
+    icm (bool): Whether to use Intrinsic Curiosity Module. Default is False (no curiosity).
+    """
     print(init_ep)
     os.environ['OMP_NUM_THREADS'] = '1'
 
-    # Create environment
     _, input_dim, action_dim = create_train_env()
     print("action_dim: ", action_dim)
     print("input_dim: ", input_dim)
@@ -64,7 +68,6 @@ def train(init_ep = 0, icm = False):
             exist = os.path.exists(new_save_path)
         new_save_path = save_path + "save_" + str(save-1)
 
-    # Create global model and optimizer
     global_model = ActorCritic(input_dim, action_dim).to(device)
     global_model.share_memory()
 
@@ -119,6 +122,6 @@ def train(init_ep = 0, icm = False):
     logger.plot_metrics()
 
 if __name__ == "__main__":
-    init_ep = 0 #cambiare a mano per continuare il training
-    icm = False
+    init_ep = 0
+    icm = True
     train(init_ep, icm)

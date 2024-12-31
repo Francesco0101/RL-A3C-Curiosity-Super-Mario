@@ -1,8 +1,19 @@
 import torch
 import torch.nn as nn
-import numpy as np
+"""
+Took inspiration from the following sources: https://github.com/sadeqa/Super-Mario-Bros-RL
+"""
+
 
 def normalized_columns_initializer(weights, std=1.0):
+    """
+    Initialize weights by normalizing columns.
+    Args:
+        weights: Tensor of weights to initialize.
+        std: Standard deviation to scale the initialized weights.
+    Returns:
+        Initialized weight tensor with normalized columns.
+    """
     out = torch.randn(weights.size())
     out *= std / torch.sqrt(out.pow(2).sum(1, keepdim=True))
     return out
@@ -10,6 +21,17 @@ def normalized_columns_initializer(weights, std=1.0):
 
 class ICM(nn.Module):
     def __init__(self, input_dim, action_dim):
+        """
+        Intrinsic Curiosity Module (ICM) for Reinforcement Learning.
+        This module is used to compute intrinsic rewards based on the agent's curiosity.
+        It contains:
+        - A common feature extractor for processing input states.
+        - An inverse model to predict actions given two consecutive states.
+        - A forward model to predict the next state given the current state and action.
+        Args:
+            input_dim: Number of input channels (e.g., frames in stacked states).
+            action_dim: Number of possible actions in the environment.
+        """
         super(ICM, self).__init__()
         self.common = nn.Sequential(
             nn.AvgPool2d(2,2),
