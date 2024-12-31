@@ -76,6 +76,8 @@ def train(init_ep = 0, icm = False):
 
     if init_ep != 0:
         global_model.load_state_dict(torch.load(f"{new_save_path}/a3c_episode_{init_ep}.pt"))
+        if icm == True:
+            global_icm.load_state_dict(torch.load(f"{new_save_path}/icm_episode_{init_ep}.pt"))
 
     if icm == True:
         optimizer = GlobalAdam(list(global_model.parameters()) + list(global_icm.parameters()), lr = LR)
