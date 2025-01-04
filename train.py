@@ -70,7 +70,6 @@ def train(init_ep = 0, icm = False):
 
     global_model = ActorCritic(input_dim, action_dim).to(device)
     global_model.share_memory()
-
     if icm == True:
         global_icm = ICM(input_dim, action_dim).to(device)
         global_icm.share_memory()
@@ -81,11 +80,13 @@ def train(init_ep = 0, icm = False):
         global_model.load_state_dict(torch.load(f"{new_save_path}/a3c_episode_{init_ep}.pt"))
         if icm == True:
             global_icm.load_state_dict(torch.load(f"{new_save_path}/icm_episode_{init_ep}.pt"))
-
-    if icm == True:
-        optimizer = GlobalAdam(list(global_model.parameters()) + list(global_icm.parameters()), lr = LR)
+    if SHARED_OPTIMIZER == True:
+        if icm == True:
+            optimizer = GlobalAdam(list(global_model.parameters()) + list(global_icm.parameters()), lr = LR)
+        else:
+            optimizer = GlobalAdam(global_model.parameters(), lr = LR)
     else:
-        optimizer = GlobalAdam(global_model.parameters(), lr = LR)
+        optimizer = None
     print("Global model created")
     print(global_model)
     # Multiprocessing variables
@@ -103,12 +104,12 @@ def train(init_ep = 0, icm = False):
     for i in range(NUM_WORKERS):
         if i < categorical_workers:
             if i == 0:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, True, global_icm, new_save_path))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm, new_save_path))
             else:
                 worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, True, False, global_icm, new_save_path))
         else:
             if i == categorical_workers:
-                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, True, global_icm, new_save_path))
+                worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm, new_save_path))
             else:
                 worker_process = mp.Process(target=worker, args=(global_model, optimizer, global_episode, MAX_EPISODES, logger, False, False, global_icm, new_save_path))
         workers.append(worker_process)
