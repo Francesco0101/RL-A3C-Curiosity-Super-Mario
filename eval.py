@@ -19,7 +19,7 @@ def eval():
 
     model = ActorCritic(num_states, num_actions).to(device)
 
-    model.load_state_dict(torch.load("checkpoints/a3c_episode_14000_sparse_curiosity_final.pt"))
+    model.load_state_dict(torch.load("checkpoints/no_curiosity/no_reward/1_1/save_0/a3c_episode_16000.pt"))
     model.eval()
     
     state, _ = env.reset()

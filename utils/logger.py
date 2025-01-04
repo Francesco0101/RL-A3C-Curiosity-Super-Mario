@@ -8,7 +8,7 @@ from utils.constants import *
 class MetricLogger:
     """
     A utility class for logging and visualizing training metrics.
-    This class handles logging of episode data, reward metrics, and plotting of moving averages.
+    This class handles logging of episode data and reward metrics.
     """
     def __init__(self, save_dir, init_ep, icm=False):
         if icm:
@@ -59,11 +59,7 @@ class MetricLogger:
                 f.write(
                     f"{'Reward':>15}{'Distance':>15}\n"
                 )
-        self.policy_losses_plot = save_dir+ "/policy_loss_plot.jpg"
-        self.value_losses_plot = save_dir+ "/value_loss_plot.jpg"
-        self.rewards_plot = save_dir+ "/reward_plot.jpg"
-        self.total_losses_plot = save_dir+ "/total_loss_plot.jpg"
-        self.curiosity_losses_plot = save_dir+ "/curiosity_loss_plot.jpg"
+ 
         
         self.ep_rewards = []
         self.ep_policy_losses = []
@@ -112,7 +108,7 @@ class MetricLogger:
                 f"Time Delta {time_since_last_record:.3f} - "
                 f"Time {datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}"
             )
-            self.plot_metrics()
+
 
         with open(self.save_log, "a") as f:
             f.write(
@@ -126,14 +122,4 @@ class MetricLogger:
             f.write(
                 f"{reward:15.4f}{distance:15.4f}\n"
             )
-
-    def plot_metrics(self):
-        for metric, name in zip(
-            ["rewards","policy_losses", "value_losses", "total_losses", "curiosity_losses"],
-            ["rewards_plot", "policy_losses_plot", "value_losses_plot","total_losses_plot", "curiosity_losses_plot"],
-        ):
-            plt.clf()
-            plt.plot(getattr(self, f"moving_avg_{metric}"), label=f"moving_avg_{metric}")
-            plt.legend()
-            plt.savefig(getattr(self, f"{name}"))
 
