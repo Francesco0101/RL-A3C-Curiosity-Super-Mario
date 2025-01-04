@@ -18,4 +18,6 @@ SAVE_PATH = "checkpoints/"
 LAMBDA = 1.0
 ETA = 0.2
 BETA = 0.2
-REWARD_TYPE = "dense"
+REWARD_TYPE = "sparse"
+WEIGHT_CURIOSITY = 10.0
+SHARED_OPTIMIZER = False

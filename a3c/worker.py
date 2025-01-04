@@ -44,6 +44,11 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
     local_steps = 0
     done = True
     rewards_done = 0
+
+    if optimizer is None:
+        optimizer = torch.optim.Adam(global_model.parameters(), lr=LR)
+        if global_icm is not None:
+            optimizer_icm = torch.optim.Adam(global_icm.parameters(), lr=LR)
     
     while local_episode < max_episodes:
         log_probs = []
@@ -88,7 +93,6 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
                 action_one_onehot[0, action] = 1
                 next_state_icm = torch.tensor(np.array(next_state), dtype=torch.float32).unsqueeze(0).to(device)
                 s_t1_pred, a_t0_pred, s_t1 = curiosity_model(state, next_state_icm, action_one_onehot)
-
                 inverse_loss = torch.nn.CrossEntropyLoss()(s_t1_pred, torch.tensor([action]).to(device)) / action_dim
                 mse_loss = torch.nn.MSELoss(reduction='none')  
                 forward_loss = mse_loss(a_t0_pred, s_t1).sum(-1, keepdim=True) / 2 
@@ -144,26 +148,45 @@ def worker(global_model, optimizer, global_episode, max_episodes, logger, catego
                 value_loss += 0.5 * (R - value).pow(2) 
                 policy_loss -= log_prob * gae - ENTROPY_COEFF * entropy
                 curiosity_loss += (1-BETA) * inverse_loss + BETA * forward_loss
-        total_loss = LAMBDA * (policy_loss + value_loss * VALUE_LOSS_COEF) + 10.0 * curiosity_loss
+        total_loss = LAMBDA * (policy_loss + value_loss * VALUE_LOSS_COEF) + WEIGHT_CURIOSITY * curiosity_loss
 
-        optimizer.zero_grad()
-        total_loss.backward()
-        torch.nn.utils.clip_grad_norm_(local_model.parameters(), MAX_GRAD_NORM)
-        if global_icm is not None:
-            torch.nn.utils.clip_grad_norm_(curiosity_model.parameters(), MAX_GRAD_NORM)
+        if SHARED_OPTIMIZER == True:
+            optimizer.zero_grad()
+            total_loss.backward()
+            torch.nn.utils.clip_grad_norm_(local_model.parameters(), MAX_GRAD_NORM)
+            if global_icm is not None:
+                torch.nn.utils.clip_grad_norm_(curiosity_model.parameters(), MAX_GRAD_NORM)
 
-        for global_param, local_param in zip(global_model.parameters(), local_model.parameters()):
-            if global_param.grad is not None:
-                break
-            global_param._grad = local_param.grad
-        
-        if global_icm is not None:
-            for global_icm_param, local_icm_param in zip(global_icm.parameters(), curiosity_model.parameters()):
-                if global_icm_param.grad is not None:
+            for global_param, local_param in zip(global_model.parameters(), local_model.parameters()):
+                if global_param.grad is not None:
                     break
-                global_icm_param._grad = local_icm_param.grad
+                global_param._grad = local_param.grad
+            
+            if global_icm is not None:
+                for global_icm_param, local_icm_param in zip(global_icm.parameters(), curiosity_model.parameters()):
+                    if global_icm_param.grad is not None:
+                        break
+                    global_icm_param._grad = local_icm_param.grad
 
-        optimizer.step()
+            optimizer.step()
+        else:
+            optimizer.zero_grad()
+            total_loss.backward(retain_graph=(global_icm is not None))
+            torch.nn.utils.clip_grad_norm_(local_model.parameters(), MAX_GRAD_NORM)
+            for local_param, global_param in zip(local_model.parameters(), global_model.parameters()):
+                if global_param.grad is not None:
+                    break
+                global_param._grad = local_param.grad
+            optimizer.step()
+            if global_icm is not None:
+                optimizer_icm.zero_grad()
+                curiosity_loss.backward()
+                torch.nn.utils.clip_grad_norm_(curiosity_model.parameters(), MAX_GRAD_NORM)
+                for local_icm_param, global_icm_param in zip(curiosity_model.parameters(), global_icm.parameters()):
+                    if global_icm_param.grad is not None:
+                        break
+                    global_icm_param._grad = local_icm_param.grad
+                optimizer_icm.step()
 
         with global_episode.get_lock():
             global_episode.value += 1
