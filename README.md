@@ -4,6 +4,17 @@ This repository contains a PyTorch implementation of Super Mario Bros based on t
 - **Pre-trained models:** Best-performing models for each environment are available in the `checkpoints` directory.
 - **Training logs and metrics:** Visualizations and logs for all training sessions are stored in the `log` directory.
 
+<table>
+  <tr>
+    <td>
+      <img src="gif/mario_1_1_curiosity_dense.gif" alt="Mario Curiosity Dense" width="300"/>
+    </td>
+    <td>
+      <img src="gif/mario_1_1_curiosity_sparse.gif" alt="Mario Curiosity Sparse" width="300"/>
+    </td>
+  </tr>
+</table>
+
 ### Prerequisites
 
 1. Dependencies listed in `requirements.txt`
