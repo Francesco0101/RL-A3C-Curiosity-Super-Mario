@@ -9,3 +9,4 @@ Pillow
 matplotlib
 opencv-python
 pygame
+moviepy

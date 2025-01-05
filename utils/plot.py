@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -94,4 +93,4 @@ def plot(path, window_size=10):
         plt.close()
 
 
-plot('log/no_curiosity/dense/1_1/log_0', 100)
+plot('log/curiosity/no_reward/1_1/log_0', 100)
