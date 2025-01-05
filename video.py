@@ -27,7 +27,7 @@ def eval():
 
     # Load the trained model
     model = ActorCritic(num_states, num_actions).to(device)
-    model.load_state_dict(torch.load("checkpoints/curiosity/sparse/1_1/save_0/a3c_episode_24000.pt"))
+    model.load_state_dict(torch.load("checkpoints/curiosity/dense/1_1/save_0/a3c_episode_29000.pt"))
     model.eval()
     
     # Initialize the environment and model states
@@ -73,7 +73,7 @@ def eval():
         
     # Close the environment
     env.close()
-    imageio.mimsave("gif/mario_1_1_curiosity_sparse.gif", video, fps=30, )
+    imageio.mimsave("gif/mario_1_1_curiosity_dense.mp4", video, fps=30, )
 
 
 if __name__ == "__main__":
