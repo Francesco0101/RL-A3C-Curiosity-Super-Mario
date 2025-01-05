@@ -113,7 +113,6 @@ def plot(path, window_size=10):
         plt.savefig(save_path_loss)
         plt.close()
 
-    print("/////////////////////////////////////////////////////////////////////////////")
 
     with open(path_distance, 'r') as f:
         lines = f.readlines()
@@ -157,4 +156,4 @@ def plot(path, window_size=10):
         plt.close()
 
 
-plot('log/no_curiosity/no_reward/1_1/log_0', 100)
+plot('log/curiosity/no_reward/1_1/log_0', 100)
