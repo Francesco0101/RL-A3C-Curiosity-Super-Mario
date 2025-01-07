@@ -19,7 +19,7 @@ def eval():
 
     model = ActorCritic(num_states, num_actions).to(device)
 
-    model.load_state_dict(torch.load("checkpoints/no_curiosity/no_reward/1_1/save_0/a3c_episode_16000.pt"))
+    model.load_state_dict(torch.load("checkpoints/curiosity/sparse/1_1/save_0/a3c_episode_24000.pt"))
     model.eval()
     
     state, _ = env.reset()
@@ -28,6 +28,7 @@ def eval():
 
     while True:
         if done:
+            print("morto\n")
             h_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
             c_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
             state, _ = env.reset()
