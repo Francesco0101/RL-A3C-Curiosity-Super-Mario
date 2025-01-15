@@ -28,7 +28,6 @@ def eval():
 
     while True:
         if done:
-            print("morto\n")
             h_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
             c_0 = torch.zeros((1, 512), dtype=torch.float).to(device)
             state, _ = env.reset()
