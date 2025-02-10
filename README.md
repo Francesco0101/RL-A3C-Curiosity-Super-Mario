@@ -29,7 +29,7 @@ This repository contains a PyTorch implementation of Super Mario Bros based on t
 
 1. Clone the repository and install dependencies:
    ```bash
-   git clone https://github.com/yourusername/repo-name.githttps://github.com/Francesco0101/RL-A3C-Curiosity-Super-Mario.git
+   git clone https://github.com/Francesco0101/RL-A3C-Curiosity-Super-Mario.git
    cd RL-A3C-Curiosity-Super-Mario
    pip install -r requirements.txt
    ```
